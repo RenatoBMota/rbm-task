@@ -1,0 +1,217 @@
+"use client";
+
+import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Plus, CheckCircle2, Circle, Trash2 } from "lucide-react";
+import api from "@/lib/api";
+import { clsx } from "clsx";
+
+interface Task {
+  id: number;
+  title: string;
+  description: string | null;
+  priority: "P1" | "P2" | "P3" | "P4";
+  status: string;
+  due_date: string | null;
+  is_completed: boolean;
+  project_id: number | null;
+}
+
+const priorities = ["P1", "P2", "P3", "P4"] as const;
+
+const priorityColors: Record<string, string> = {
+  P1: "bg-red-100 text-red-700 border-red-200",
+  P2: "bg-orange-100 text-orange-700 border-orange-200",
+  P3: "bg-blue-100 text-blue-700 border-blue-200",
+  P4: "bg-slate-100 text-slate-600 border-slate-200",
+};
+
+export default function TasksPage() {
+  const qc = useQueryClient();
+  const [showForm, setShowForm] = useState(false);
+  const [form, setForm] = useState({
+    title: "",
+    description: "",
+    priority: "P4" as const,
+    due_date: "",
+  });
+
+  const { data: tasks = [], isLoading } = useQuery<Task[]>({
+    queryKey: ["tasks"],
+    queryFn: () => api.get("/tasks/").then((r) => r.data),
+  });
+
+  const createMutation = useMutation({
+    mutationFn: (data: typeof form) =>
+      api.post("/tasks/", { ...data, due_date: data.due_date || null }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["tasks"] });
+      setShowForm(false);
+      setForm({ title: "", description: "", priority: "P4", due_date: "" });
+    },
+  });
+
+  const toggleMutation = useMutation({
+    mutationFn: ({ id, is_completed }: { id: number; is_completed: boolean }) =>
+      api.put(`/tasks/${id}`, { is_completed }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["tasks"] }),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: number) => api.delete(`/tasks/${id}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["tasks"] }),
+  });
+
+  const pending = tasks.filter((t) => !t.is_completed);
+  const completed = tasks.filter((t) => t.is_completed);
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-2xl font-bold text-slate-900">Tarefas</h1>
+        <button className="btn-primary flex items-center gap-2" onClick={() => setShowForm(true)}>
+          <Plus size={18} /> Nova Tarefa
+        </button>
+      </div>
+
+      {showForm && (
+        <div className="card p-6 mb-6">
+          <h2 className="font-semibold mb-4">Nova Tarefa</h2>
+          <div className="space-y-3">
+            <input
+              className="input"
+              placeholder="Título da tarefa"
+              value={form.title}
+              onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))}
+            />
+            <input
+              className="input"
+              placeholder="Descrição (opcional)"
+              value={form.description}
+              onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
+            />
+            <div className="flex gap-3">
+              <div className="flex-1">
+                <label className="block text-xs text-slate-500 mb-1">Prioridade</label>
+                <select
+                  className="input"
+                  value={form.priority}
+                  onChange={(e) => setForm((p) => ({ ...p, priority: e.target.value as typeof form.priority }))}
+                >
+                  {priorities.map((p) => (
+                    <option key={p} value={p}>
+                      {p === "P1" ? "P1 — Urgente" : p === "P2" ? "P2 — Alta" : p === "P3" ? "P3 — Média" : "P4 — Baixa"}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex-1">
+                <label className="block text-xs text-slate-500 mb-1">Prazo</label>
+                <input
+                  type="datetime-local"
+                  className="input"
+                  value={form.due_date}
+                  onChange={(e) => setForm((p) => ({ ...p, due_date: e.target.value }))}
+                />
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <button
+                className="btn-primary"
+                onClick={() => createMutation.mutate(form)}
+                disabled={!form.title || createMutation.isPending}
+              >
+                {createMutation.isPending ? "Criando..." : "Criar"}
+              </button>
+              <button className="btn-secondary" onClick={() => setShowForm(false)}>
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isLoading ? (
+        <p className="text-slate-400">Carregando...</p>
+      ) : (
+        <div className="space-y-6">
+          <TaskGroup
+            title={`Pendentes (${pending.length})`}
+            tasks={pending}
+            onToggle={(id) => toggleMutation.mutate({ id, is_completed: true })}
+            onDelete={(id) => deleteMutation.mutate(id)}
+          />
+          {completed.length > 0 && (
+            <TaskGroup
+              title={`Concluídas (${completed.length})`}
+              tasks={completed}
+              onToggle={(id) => toggleMutation.mutate({ id, is_completed: false })}
+              onDelete={(id) => deleteMutation.mutate(id)}
+              dimmed
+            />
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TaskGroup({
+  title,
+  tasks,
+  onToggle,
+  onDelete,
+  dimmed,
+}: {
+  title: string;
+  tasks: Task[];
+  onToggle: (id: number) => void;
+  onDelete: (id: number) => void;
+  dimmed?: boolean;
+}) {
+  return (
+    <div>
+      <h2 className={clsx("text-sm font-semibold mb-3", dimmed ? "text-slate-400" : "text-slate-700")}>
+        {title}
+      </h2>
+      <div className="space-y-2">
+        {tasks.map((t) => (
+          <div
+            key={t.id}
+            className={clsx("card flex items-center gap-3 px-4 py-3 transition-all", dimmed && "opacity-60")}
+          >
+            <button onClick={() => onToggle(t.id)} className="text-slate-400 hover:text-primary-600 transition-colors flex-shrink-0">
+              {t.is_completed ? (
+                <CheckCircle2 size={20} className="text-green-500" />
+              ) : (
+                <Circle size={20} />
+              )}
+            </button>
+            <span
+              className={clsx(
+                "text-xs font-medium px-2 py-0.5 rounded-full border",
+                priorityColors[t.priority]
+              )}
+            >
+              {t.priority}
+            </span>
+            <span className={clsx("flex-1 text-sm", t.is_completed && "line-through text-slate-400")}>
+              {t.title}
+            </span>
+            {t.due_date && (
+              <span className="text-xs text-slate-400">
+                {new Date(t.due_date).toLocaleDateString("pt-BR")}
+              </span>
+            )}
+            <button
+              onClick={() => onDelete(t.id)}
+              className="text-slate-300 hover:text-red-500 transition-colors p-1"
+            >
+              <Trash2 size={15} />
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
