@@ -12,12 +12,14 @@ import {
   type DragEndEvent,
   type DragStartEvent,
 } from "@dnd-kit/core";
+import { Plus } from "lucide-react";
 import api from "@/lib/api";
 import { TASK_STATUSES } from "@/lib/types";
 import type { Task, TaskStatus, Project } from "@/lib/types";
 import { KanbanColumn } from "@/components/kanban/KanbanColumn";
 import { KanbanCard } from "@/components/kanban/KanbanCard";
 import { TaskDetailModal } from "@/components/tasks/TaskDetailModal";
+import { QuickAddTaskModal } from "@/components/tasks/QuickAddTaskModal";
 import { useWorkspaces } from "@/hooks/useWorkspaces";
 
 const EMPTY_PROJECTS: Project[] = [];
@@ -43,6 +45,7 @@ export default function KanbanPage() {
   const [columns, setColumns] = useState<Record<TaskStatus, Task[]>>(groupByStatus([]));
   const [activeTask, setActiveTask] = useState<Task | null>(null);
   const [selectedTaskId, setSelectedTaskId] = useState<number | null>(null);
+  const [quickAddStatus, setQuickAddStatus] = useState<TaskStatus | null>(null);
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
@@ -126,17 +129,27 @@ export default function KanbanPage() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-slate-900">Kanban</h1>
-        <select
-          className="input w-56"
-          value={projectId ?? ""}
-          onChange={(e) => setProjectId(Number(e.target.value))}
-        >
-          {projects.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name}
-            </option>
-          ))}
-        </select>
+        <div className="flex items-center gap-3">
+          <select
+            className="input w-56"
+            value={projectId ?? ""}
+            onChange={(e) => setProjectId(Number(e.target.value))}
+          >
+            {projects.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+          {projectId && (
+            <button
+              className="btn-primary flex items-center gap-2"
+              onClick={() => setQuickAddStatus("todo")}
+            >
+              <Plus size={18} /> Nova Tarefa
+            </button>
+          )}
+        </div>
       </div>
 
       {!projectId ? (
@@ -156,6 +169,7 @@ export default function KanbanPage() {
                 label={label}
                 tasks={columns[value]}
                 onCardClick={setSelectedTaskId}
+                onAddClick={() => setQuickAddStatus(value)}
               />
             ))}
           </div>
@@ -167,6 +181,15 @@ export default function KanbanPage() {
 
       {selectedTaskId && (
         <TaskDetailModal taskId={selectedTaskId} onClose={() => setSelectedTaskId(null)} />
+      )}
+
+      {quickAddStatus && (
+        <QuickAddTaskModal
+          projects={projects}
+          defaultProjectId={projectId}
+          defaultStatus={quickAddStatus}
+          onClose={() => setQuickAddStatus(null)}
+        />
       )}
     </div>
   );

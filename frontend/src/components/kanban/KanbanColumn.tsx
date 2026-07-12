@@ -2,6 +2,7 @@
 
 import { useDroppable } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import { Plus } from "lucide-react";
 import { clsx } from "clsx";
 import { KanbanCard } from "./KanbanCard";
 import type { Task, TaskStatus } from "@/lib/types";
@@ -13,11 +14,13 @@ export function KanbanColumn({
   label,
   tasks,
   onCardClick,
+  onAddClick,
 }: {
   status: TaskStatus;
   label: string;
   tasks: Task[];
   onCardClick: (taskId: number) => void;
+  onAddClick: () => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: status });
   const overLimit = tasks.length > WIP_LIMIT;
@@ -48,6 +51,12 @@ export function KanbanColumn({
           ))}
         </SortableContext>
       </div>
+      <button
+        onClick={onAddClick}
+        className="mt-2 flex items-center gap-1.5 text-xs text-slate-400 hover:text-primary-600 hover:bg-surface-50 px-2 py-1.5 rounded-md w-full transition-colors"
+      >
+        <Plus size={14} /> Adicionar tarefa
+      </button>
     </div>
   );
 }

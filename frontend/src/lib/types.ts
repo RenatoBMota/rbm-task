@@ -63,6 +63,13 @@ export interface WorkspaceMember {
   role: WorkspaceRole;
 }
 
+export interface Reminder {
+  id: number;
+  task_id: number;
+  remind_at: string;
+  is_sent: boolean;
+}
+
 export interface ChecklistItem {
   id: number;
   title: string;

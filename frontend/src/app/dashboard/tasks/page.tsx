@@ -5,6 +5,9 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Plus, CheckCircle2, Circle, Trash2 } from "lucide-react";
 import api from "@/lib/api";
 import { clsx } from "clsx";
+import { useWorkspaces } from "@/hooks/useWorkspaces";
+import { QuickAddTaskModal } from "@/components/tasks/QuickAddTaskModal";
+import type { Project } from "@/lib/types";
 
 interface Task {
   id: number;
@@ -17,7 +20,7 @@ interface Task {
   project_id: number | null;
 }
 
-const priorities = ["P1", "P2", "P3", "P4"] as const;
+const EMPTY_PROJECTS: Project[] = [];
 
 const priorityColors: Record<string, string> = {
   P1: "bg-red-100 text-red-700 border-red-200",
@@ -28,27 +31,18 @@ const priorityColors: Record<string, string> = {
 
 export default function TasksPage() {
   const qc = useQueryClient();
-  const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({
-    title: "",
-    description: "",
-    priority: "P4" as const,
-    due_date: "",
+  const [showModal, setShowModal] = useState(false);
+  const { currentWorkspaceId } = useWorkspaces();
+
+  const { data: projects = EMPTY_PROJECTS } = useQuery<Project[]>({
+    queryKey: ["projects", currentWorkspaceId],
+    queryFn: () => api.get("/projects", { params: { workspace_id: currentWorkspaceId } }).then((r) => r.data),
+    enabled: !!currentWorkspaceId,
   });
 
   const { data: tasks = [], isLoading } = useQuery<Task[]>({
     queryKey: ["tasks"],
     queryFn: () => api.get("/tasks").then((r) => r.data),
-  });
-
-  const createMutation = useMutation({
-    mutationFn: (data: typeof form) =>
-      api.post("/tasks", { ...data, due_date: data.due_date || null }),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["tasks"] });
-      setShowForm(false);
-      setForm({ title: "", description: "", priority: "P4", due_date: "" });
-    },
   });
 
   const toggleMutation = useMutation({
@@ -69,66 +63,19 @@ export default function TasksPage() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-slate-900">Tarefas</h1>
-        <button className="btn-primary flex items-center gap-2" onClick={() => setShowForm(true)}>
+        <button className="btn-primary flex items-center gap-2" onClick={() => setShowModal(true)}>
           <Plus size={18} /> Nova Tarefa
         </button>
       </div>
 
-      {showForm && (
-        <div className="card p-6 mb-6">
-          <h2 className="font-semibold mb-4">Nova Tarefa</h2>
-          <div className="space-y-3">
-            <input
-              className="input"
-              placeholder="Título da tarefa"
-              value={form.title}
-              onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))}
-            />
-            <input
-              className="input"
-              placeholder="Descrição (opcional)"
-              value={form.description}
-              onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
-            />
-            <div className="flex gap-3">
-              <div className="flex-1">
-                <label className="block text-xs text-slate-500 mb-1">Prioridade</label>
-                <select
-                  className="input"
-                  value={form.priority}
-                  onChange={(e) => setForm((p) => ({ ...p, priority: e.target.value as typeof form.priority }))}
-                >
-                  {priorities.map((p) => (
-                    <option key={p} value={p}>
-                      {p === "P1" ? "P1 — Urgente" : p === "P2" ? "P2 — Alta" : p === "P3" ? "P3 — Média" : "P4 — Baixa"}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="flex-1">
-                <label className="block text-xs text-slate-500 mb-1">Prazo</label>
-                <input
-                  type="datetime-local"
-                  className="input"
-                  value={form.due_date}
-                  onChange={(e) => setForm((p) => ({ ...p, due_date: e.target.value }))}
-                />
-              </div>
-            </div>
-            <div className="flex gap-2">
-              <button
-                className="btn-primary"
-                onClick={() => createMutation.mutate(form)}
-                disabled={!form.title || createMutation.isPending}
-              >
-                {createMutation.isPending ? "Criando..." : "Criar"}
-              </button>
-              <button className="btn-secondary" onClick={() => setShowForm(false)}>
-                Cancelar
-              </button>
-            </div>
-          </div>
-        </div>
+      {showModal && (
+        <QuickAddTaskModal
+          projects={projects}
+          onClose={() => {
+            setShowModal(false);
+            qc.invalidateQueries({ queryKey: ["tasks"] });
+          }}
+        />
       )}
 
       {isLoading ? (
