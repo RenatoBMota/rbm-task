@@ -11,7 +11,8 @@ import {
   Tooltip,
   CartesianGrid,
 } from "recharts";
-import { FileSpreadsheet, FileText } from "lucide-react";
+import { FileSpreadsheet, FileText, AlertTriangle } from "lucide-react";
+import { clsx } from "clsx";
 import api from "@/lib/api";
 import { useWorkspaces } from "@/hooks/useWorkspaces";
 import type { Project } from "@/lib/types";
@@ -33,6 +34,34 @@ interface SLACompliance {
   at_risk: number;
   compliance_pct: number;
 }
+
+interface TeamWorkloadItem {
+  user_id: number;
+  full_name: string;
+  active_task_count: number;
+  weighted_load: number;
+  is_overloaded: boolean;
+}
+
+interface ProjectRiskItem {
+  project_id: number;
+  project_name: string;
+  total_tasks: number;
+  overdue: number;
+  at_risk: number;
+  breached: number;
+  risk_score: number;
+  level: "low" | "medium" | "high";
+}
+
+const OVERLOAD_THRESHOLD = 12;
+
+const RISK_LEVEL_LABELS: Record<string, string> = { low: "Baixo", medium: "Médio", high: "Alto" };
+const RISK_LEVEL_CLASSES: Record<string, string> = {
+  low: "text-green-600 bg-green-50 border-green-200",
+  medium: "text-amber-600 bg-amber-50 border-amber-200",
+  high: "text-red-600 bg-red-50 border-red-200",
+};
 
 const STATUS_LABELS: Record<string, string> = {
   todo: "A Fazer",
@@ -67,6 +96,26 @@ export default function AnalyticsPage() {
   const { data: sla } = useQuery<SLACompliance>({
     queryKey: ["analytics", "sla-compliance", projectId],
     queryFn: () => api.get("/analytics/sla-compliance", { params }).then((r) => r.data),
+  });
+
+  const { data: workload = [] } = useQuery<TeamWorkloadItem[]>({
+    queryKey: ["predictive", "workload", currentWorkspaceId],
+    queryFn: () =>
+      api.get(`/predictive/workspaces/${currentWorkspaceId}/workload`).then((r) => r.data),
+    enabled: !!currentWorkspaceId,
+  });
+
+  const { data: projectRisks = [] } = useQuery<ProjectRiskItem[]>({
+    queryKey: ["predictive", "risks", currentWorkspaceId, projects.map((p) => p.id).join(",")],
+    queryFn: async () => {
+      const results = await Promise.all(
+        projects.map((p) =>
+          api.get(`/predictive/projects/${p.id}/risk`).then((r) => ({ ...r.data, project_name: p.name }))
+        )
+      );
+      return results.sort((a, b) => b.risk_score - a.risk_score);
+    },
+    enabled: !!currentWorkspaceId && projects.length > 0,
   });
 
   const downloadReport = async (format: "xlsx" | "pdf") => {
@@ -164,6 +213,64 @@ export default function AnalyticsPage() {
               <Bar dataKey="count" name="Tarefas" fill="#4f46e5" radius={[0, 4, 4, 0]} />
             </BarChart>
           </ResponsiveContainer>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+        <div className="card p-6">
+          <h2 className="font-semibold text-slate-900 mb-4">Carga da equipe</h2>
+          {workload.length === 0 ? (
+            <p className="text-sm text-slate-400">Nenhum membro com tarefas nesta área de trabalho.</p>
+          ) : (
+            <div className="space-y-3">
+              {workload.map((m) => (
+                <div key={m.user_id}>
+                  <div className="flex items-center justify-between text-sm mb-1">
+                    <span className="font-medium text-slate-700 flex items-center gap-1.5">
+                      {m.full_name}
+                      {m.is_overloaded && <AlertTriangle size={13} className="text-red-500" />}
+                    </span>
+                    <span className="text-slate-400">
+                      {m.active_task_count} tarefa{m.active_task_count === 1 ? "" : "s"}
+                    </span>
+                  </div>
+                  <div className="h-2 bg-surface-100 rounded-full overflow-hidden">
+                    <div
+                      className={clsx("h-full rounded-full", m.is_overloaded ? "bg-red-500" : "bg-primary-600")}
+                      style={{ width: `${Math.min((m.weighted_load / OVERLOAD_THRESHOLD) * 100, 100)}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="card p-6">
+          <h2 className="font-semibold text-slate-900 mb-4">Risco por projeto</h2>
+          {projectRisks.length === 0 ? (
+            <p className="text-sm text-slate-400">Nenhum projeto nesta área de trabalho.</p>
+          ) : (
+            <div className="space-y-2">
+              {projectRisks.map((r) => (
+                <div
+                  key={r.project_id}
+                  className="flex items-center gap-3 py-2 border-b border-surface-100 last:border-0"
+                >
+                  <span className="flex-1 text-sm text-slate-700 truncate">{r.project_name}</span>
+                  <span className="text-xs text-slate-400">{r.total_tasks} tarefas</span>
+                  <span
+                    className={clsx(
+                      "text-xs font-medium px-2 py-0.5 rounded-full border flex-shrink-0",
+                      RISK_LEVEL_CLASSES[r.level]
+                    )}
+                  >
+                    {RISK_LEVEL_LABELS[r.level]} ({r.risk_score})
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>

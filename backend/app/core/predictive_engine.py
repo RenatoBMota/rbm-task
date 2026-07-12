@@ -1,8 +1,9 @@
 from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 from app.models.task import Task, TaskPriority
-from app.models.user import User, UserRole
+from app.models.project import Project
 from app.crud.sla import sla_status
+from app.crud.workspace import list_members
 
 LOAD_WEIGHT: dict[TaskPriority, int] = {
     TaskPriority.P1: 4,
@@ -14,17 +15,26 @@ LOAD_WEIGHT: dict[TaskPriority, int] = {
 OVERLOAD_THRESHOLD = 12
 
 
-def team_workload(db: Session) -> list[dict]:
-    users = db.query(User).filter(User.is_active == True).all()
+def team_workload(db: Session, workspace_id: int) -> list[dict]:
+    members = list_members(db, workspace_id)
+    project_ids = [p.id for p in db.query(Project.id).filter(Project.workspace_id == workspace_id).all()]
+
     result = []
-    for user in users:
-        active_tasks = db.query(Task).filter(
-            Task.assignee_id == user.id, Task.is_completed == False, Task.parent_id == None
-        ).all()
+    for member in members:
+        active_tasks = (
+            db.query(Task).filter(
+                Task.assignee_id == member.user_id,
+                Task.project_id.in_(project_ids),
+                Task.is_completed == False,
+                Task.parent_id == None,
+                Task.is_archived == False,
+            ).all()
+            if project_ids else []
+        )
         weighted_load = sum(LOAD_WEIGHT[t.priority] for t in active_tasks)
         result.append({
-            "user_id": user.id,
-            "full_name": user.full_name,
+            "user_id": member.user_id,
+            "full_name": member.user.full_name,
             "active_task_count": len(active_tasks),
             "weighted_load": weighted_load,
             "is_overloaded": weighted_load > OVERLOAD_THRESHOLD,
@@ -34,7 +44,9 @@ def team_workload(db: Session) -> list[dict]:
 
 
 def project_risk(db: Session, project_id: int) -> dict:
-    tasks = db.query(Task).filter(Task.project_id == project_id, Task.parent_id == None).all()
+    tasks = db.query(Task).filter(
+        Task.project_id == project_id, Task.parent_id == None, Task.is_archived == False
+    ).all()
     active_tasks = [t for t in tasks if not t.is_completed]
     total = len(tasks)
 

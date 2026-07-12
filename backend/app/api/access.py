@@ -12,6 +12,11 @@ def require_project_member(db: Session, project_id: int, user_id: int) -> None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Projeto não encontrado")
 
 
+def require_workspace_member(db: Session, workspace_id: int, user_id: int) -> None:
+    if not get_member(db, workspace_id, user_id):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Área de trabalho não encontrada")
+
+
 def require_task_access(db: Session, task_id: int, user_id: int) -> Task:
     task = get_task(db, task_id)
     if not task:

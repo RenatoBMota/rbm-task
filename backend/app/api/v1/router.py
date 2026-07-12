@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 from app.api.v1 import (
     auth, users, projects, tasks, checklist_items, comments, attachments, notifications,
-    sla, automations, ai, analytics, reports, labels, workspaces,
+    sla, automations, ai, analytics, reports, labels, workspaces, predictive,
 )
 
 router = APIRouter(prefix="/api/v1")
@@ -21,3 +21,4 @@ router.include_router(ai.router)
 router.include_router(analytics.router)
 router.include_router(reports.router)
 router.include_router(labels.router)
+router.include_router(predictive.router)
