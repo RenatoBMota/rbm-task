@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, FolderOpen, CheckSquare, KanbanSquare, Calendar, LogOut } from "lucide-react";
+import { LayoutDashboard, FolderOpen, CheckSquare, KanbanSquare, Calendar, BarChart3, Zap, LogOut } from "lucide-react";
 import { useAuthStore } from "@/store/auth";
 import { clsx } from "clsx";
 
@@ -12,11 +12,17 @@ const navItems = [
   { href: "/dashboard/tasks", label: "Tarefas", icon: CheckSquare },
   { href: "/dashboard/kanban", label: "Kanban", icon: KanbanSquare },
   { href: "/dashboard/calendar", label: "Calendário", icon: Calendar },
+  { href: "/dashboard/analytics", label: "Analytics", icon: BarChart3 },
+];
+
+const adminNavItems = [
+  { href: "/dashboard/automations", label: "Automações", icon: Zap },
 ];
 
 export function Sidebar() {
   const pathname = usePathname();
   const { user, logout } = useAuthStore();
+  const items = user?.role === "admin" ? [...navItems, ...adminNavItems] : navItems;
 
   return (
     <aside className="w-64 min-h-screen bg-surface-900 flex flex-col">
@@ -26,7 +32,7 @@ export function Sidebar() {
       </div>
 
       <nav className="flex-1 px-3 py-4 space-y-1">
-        {navItems.map(({ href, label, icon: Icon }) => (
+        {items.map(({ href, label, icon: Icon }) => (
           <Link
             key={href}
             href={href}

@@ -1,9 +1,24 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { CheckCircle2, Clock, AlertCircle, FolderOpen } from "lucide-react";
+import { CheckCircle2, Clock, AlertCircle, FolderOpen, Sparkles, ShieldAlert } from "lucide-react";
+import { clsx } from "clsx";
 import api from "@/lib/api";
 import { useAuthStore } from "@/store/auth";
+
+interface PrioritySuggestion {
+  task_id: number;
+  title: string;
+  score: number;
+  reason: string;
+}
+
+interface RiskTask {
+  task_id: number;
+  title: string;
+  risk: "at_risk" | "breached";
+  deadline: string;
+}
 
 interface Task {
   id: number;
@@ -50,6 +65,16 @@ export default function DashboardPage() {
     queryFn: () => api.get("/tasks/").then((r) => r.data),
   });
 
+  const { data: suggestions = [] } = useQuery<PrioritySuggestion[]>({
+    queryKey: ["ai", "priority-suggestions"],
+    queryFn: () => api.get("/ai/priority-suggestions", { params: { limit: 5 } }).then((r) => r.data),
+  });
+
+  const { data: riskTasks = [] } = useQuery<RiskTask[]>({
+    queryKey: ["ai", "risk-tasks"],
+    queryFn: () => api.get("/ai/risk-tasks").then((r) => r.data),
+  });
+
   const completedToday = allTasks.filter((t) => t.is_completed).length;
 
   return (
@@ -68,9 +93,54 @@ export default function DashboardPage() {
         <StatCard icon={<FolderOpen size={20} />} label="Projetos ativos" value={projects.length} color="purple" />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         <TaskList title="Tarefas de Hoje" tasks={todayTasks} emptyMsg="Nenhuma tarefa para hoje" />
         <TaskList title="Tarefas Atrasadas" tasks={overdueTasks} emptyMsg="Nenhuma tarefa atrasada" urgent />
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="card p-6">
+          <h2 className="font-semibold text-slate-900 mb-4 flex items-center gap-2">
+            <Sparkles size={16} className="text-primary-600" /> Sugestões de prioridade (IA)
+          </h2>
+          {suggestions.length === 0 ? (
+            <p className="text-slate-400 text-sm">Nenhuma sugestão no momento</p>
+          ) : (
+            <ul className="space-y-2">
+              {suggestions.map((s) => (
+                <li key={s.task_id} className="py-2 border-b border-surface-100 last:border-0">
+                  <p className="text-sm text-slate-700 truncate">{s.title}</p>
+                  <p className="text-xs text-slate-400 mt-0.5">{s.reason}</p>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        <div className="card p-6">
+          <h2 className="font-semibold text-slate-900 mb-4 flex items-center gap-2">
+            <ShieldAlert size={16} className="text-amber-600" /> Tarefas em risco de SLA
+          </h2>
+          {riskTasks.length === 0 ? (
+            <p className="text-slate-400 text-sm">Nenhuma tarefa em risco</p>
+          ) : (
+            <ul className="space-y-2">
+              {riskTasks.map((t) => (
+                <li key={t.task_id} className="flex items-center gap-3 py-2 border-b border-surface-100 last:border-0">
+                  <span
+                    className={clsx(
+                      "text-xs font-medium px-2 py-0.5 rounded-full",
+                      t.risk === "breached" ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-700"
+                    )}
+                  >
+                    {t.risk === "breached" ? "Estourado" : "Em risco"}
+                  </span>
+                  <span className="text-sm text-slate-700 flex-1 truncate">{t.title}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       </div>
     </div>
   );
