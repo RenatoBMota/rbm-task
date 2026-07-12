@@ -21,6 +21,14 @@ class Settings(BaseSettings):
     MINIO_BUCKET: str = "rbm-files"
     MINIO_SECURE: bool = False
 
+    SMTP_HOST: str | None = None
+    SMTP_PORT: int = 587
+    SMTP_USER: str | None = None
+    SMTP_PASSWORD: str | None = None
+    SMTP_USE_TLS: bool = True
+    SMTP_FROM_EMAIL: str = "no-reply@rbmtask.com"
+    SMTP_FROM_NAME: str = "RBM TASK"
+
     CORS_ORIGINS: list[str] = ["http://localhost:3000"]
 
     class Config:

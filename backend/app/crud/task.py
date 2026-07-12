@@ -2,7 +2,9 @@ from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 from app.models.task import Task, TaskStatus
 from app.models.notification import NotificationType
+from app.models.automation import TriggerEvent
 from app.crud.notification import create_notification
+from app.core.automation_engine import evaluate_and_run
 from app.schemas.task import TaskCreate, TaskUpdate
 
 
@@ -75,10 +77,12 @@ def create_task(db: Session, task_in: TaskCreate, creator_id: int) -> Task:
             message=f"Você foi designado para a tarefa \"{db_task.title}\"",
             task_id=db_task.id,
         )
+    evaluate_and_run(db, TriggerEvent.TASK_CREATED, db_task)
     return db_task
 
 
 def move_task(db: Session, task: Task, status: TaskStatus, position: int) -> Task:
+    status_changed = task.status != status
     siblings = (
         db.query(Task)
         .filter(Task.status == status, Task.id != task.id)
@@ -91,17 +95,21 @@ def move_task(db: Session, task: Task, status: TaskStatus, position: int) -> Tas
         sibling.position = index
     db.commit()
     db.refresh(task)
+    if status_changed:
+        evaluate_and_run(db, TriggerEvent.TASK_STATUS_CHANGED, task)
     return task
 
 
 def update_task(db: Session, task: Task, task_in: TaskUpdate) -> Task:
     update_data = task_in.model_dump(exclude_unset=True)
-    if update_data.get("is_completed") is True and not task.is_completed:
+    became_completed = update_data.get("is_completed") is True and not task.is_completed
+    if became_completed:
         update_data["completed_at"] = datetime.now(timezone.utc)
     elif update_data.get("is_completed") is False:
         update_data["completed_at"] = None
 
     previous_assignee_id = task.assignee_id
+    previous_status = task.status
     new_assignee_id = update_data.get("assignee_id", previous_assignee_id)
 
     for field, value in update_data.items():
@@ -117,6 +125,10 @@ def update_task(db: Session, task: Task, task_in: TaskUpdate) -> Task:
             message=f"Você foi designado para a tarefa \"{task.title}\"",
             task_id=task.id,
         )
+    if task.status != previous_status:
+        evaluate_and_run(db, TriggerEvent.TASK_STATUS_CHANGED, task)
+    if became_completed:
+        evaluate_and_run(db, TriggerEvent.TASK_COMPLETED, task)
     return task
 
 
