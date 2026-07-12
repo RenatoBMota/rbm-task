@@ -84,7 +84,7 @@ export function TaskDetailModal({ taskId, onClose }: { taskId: number; onClose: 
   const propsRef = useOutsideClick<HTMLDivElement>(() => setOpenProp(null));
 
   const [menuOpen, setMenuOpen] = useState(false);
-  const [menuView, setMenuView] = useState<"main" | "move">("main");
+  const [menuView, setMenuView] = useState<"main" | "move" | "delete">("main");
   const [moveProjectId, setMoveProjectId] = useState<number | null>(null);
   const [moveStatus, setMoveStatus] = useState<TaskStatus>("todo");
   const [shareMessage, setShareMessage] = useState("");
@@ -154,6 +154,14 @@ export function TaskDetailModal({ taskId, onClose }: { taskId: number; onClose: 
   const duplicateTask = useMutation({
     mutationFn: () => api.post(`/tasks/${taskId}/duplicate`, {}),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["tasks"] }),
+  });
+
+  const deleteTask = useMutation({
+    mutationFn: () => api.delete(`/tasks/${taskId}`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["tasks"] });
+      onClose();
+    },
   });
 
   const attachLabel = useMutation({
@@ -327,8 +335,15 @@ export function TaskDetailModal({ taskId, onClose }: { taskId: number; onClose: 
                         <button className={menuItemClass} onClick={handleShare}>
                           <Share2 size={14} /> Compartilhar link
                         </button>
+                        <div className="border-t border-surface-100 my-1" />
+                        <button
+                          className={clsx(menuItemClass, "text-red-600 hover:bg-red-50")}
+                          onClick={() => setMenuView("delete")}
+                        >
+                          <Trash2 size={14} /> Excluir
+                        </button>
                       </>
-                    ) : (
+                    ) : menuView === "move" ? (
                       <div className="p-2 space-y-2">
                         <label className="block text-xs text-slate-400">Projeto</label>
                         <select
@@ -361,6 +376,22 @@ export function TaskDetailModal({ taskId, onClose }: { taskId: number; onClose: 
                           </button>
                           <button className="btn-primary flex-1 text-sm py-1" onClick={handleMove}>
                             Confirmar
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="p-3 space-y-3">
+                        <p className="text-sm text-slate-700">Excluir esta tarefa permanentemente?</p>
+                        <div className="flex gap-2">
+                          <button className="btn-secondary flex-1 text-sm py-1" onClick={() => setMenuView("main")}>
+                            Cancelar
+                          </button>
+                          <button
+                            className="flex-1 text-sm py-1 rounded-md bg-red-600 text-white hover:bg-red-700 disabled:opacity-50"
+                            disabled={deleteTask.isPending}
+                            onClick={() => deleteTask.mutate()}
+                          >
+                            {deleteTask.isPending ? "Excluindo..." : "Excluir"}
                           </button>
                         </div>
                       </div>
