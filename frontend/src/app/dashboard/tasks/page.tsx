@@ -7,6 +7,7 @@ import api from "@/lib/api";
 import { clsx } from "clsx";
 import { useWorkspaces } from "@/hooks/useWorkspaces";
 import { QuickAddTaskModal } from "@/components/tasks/QuickAddTaskModal";
+import { TaskDetailModal } from "@/components/tasks/TaskDetailModal";
 import type { Project } from "@/lib/types";
 
 interface Task {
@@ -32,6 +33,7 @@ const priorityColors: Record<string, string> = {
 export default function TasksPage() {
   const qc = useQueryClient();
   const [showModal, setShowModal] = useState(false);
+  const [selectedTaskId, setSelectedTaskId] = useState<number | null>(null);
   const { currentWorkspaceId } = useWorkspaces();
 
   const { data: projects = EMPTY_PROJECTS } = useQuery<Project[]>({
@@ -87,6 +89,7 @@ export default function TasksPage() {
             tasks={pending}
             onToggle={(id) => toggleMutation.mutate({ id, is_completed: true })}
             onDelete={(id) => deleteMutation.mutate(id)}
+            onSelect={setSelectedTaskId}
           />
           {completed.length > 0 && (
             <TaskGroup
@@ -94,10 +97,15 @@ export default function TasksPage() {
               tasks={completed}
               onToggle={(id) => toggleMutation.mutate({ id, is_completed: false })}
               onDelete={(id) => deleteMutation.mutate(id)}
+              onSelect={setSelectedTaskId}
               dimmed
             />
           )}
         </div>
+      )}
+
+      {selectedTaskId && (
+        <TaskDetailModal taskId={selectedTaskId} onClose={() => setSelectedTaskId(null)} />
       )}
     </div>
   );
@@ -108,12 +116,14 @@ function TaskGroup({
   tasks,
   onToggle,
   onDelete,
+  onSelect,
   dimmed,
 }: {
   title: string;
   tasks: Task[];
   onToggle: (id: number) => void;
   onDelete: (id: number) => void;
+  onSelect: (id: number) => void;
   dimmed?: boolean;
 }) {
   return (
@@ -125,9 +135,19 @@ function TaskGroup({
         {tasks.map((t) => (
           <div
             key={t.id}
-            className={clsx("card flex items-center gap-3 px-4 py-3 transition-all", dimmed && "opacity-60")}
+            onClick={() => onSelect(t.id)}
+            className={clsx(
+              "card flex items-center gap-3 px-4 py-3 transition-all cursor-pointer hover:border-primary-200",
+              dimmed && "opacity-60"
+            )}
           >
-            <button onClick={() => onToggle(t.id)} className="text-slate-400 hover:text-primary-600 transition-colors flex-shrink-0">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggle(t.id);
+              }}
+              className="text-slate-400 hover:text-primary-600 transition-colors flex-shrink-0"
+            >
               {t.is_completed ? (
                 <CheckCircle2 size={20} className="text-green-500" />
               ) : (
@@ -151,7 +171,10 @@ function TaskGroup({
               </span>
             )}
             <button
-              onClick={() => onDelete(t.id)}
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete(t.id);
+              }}
               className="text-slate-300 hover:text-red-500 transition-colors p-1"
             >
               <Trash2 size={15} />
