@@ -628,15 +628,24 @@ RBM TASK CORE
 - [x] Dashboard básico (tarefas do dia, atrasadas, pendentes)
 - [x] Deploy inicial na VPS
 
-### Fase 2 — Produtividade — 🔜 Próxima fase
+### Fase 2 — Produtividade — ✅ Concluída
 
-- [ ] Kanban com drag & drop
-- [ ] Calendário (diário, semanal, mensal)
-- [ ] Checklist e subtarefas (UI)
-- [ ] Comentários e menções
-- [ ] Upload de arquivos (MinIO)
-- [ ] Notificações internas (bell)
-- [ ] PWA (funcionar como app no celular)
+- [x] Kanban com drag & drop (@dnd-kit, indicador de WIP por coluna)
+- [x] Calendário (visão mensal); visões diária/semanal ficam para uma iteração futura
+- [x] Checklist e subtarefas (UI no detalhe da tarefa)
+- [x] Comentários e menções (@email dispara notificação)
+- [x] Upload de arquivos (MinIO, URL de download pré-assinada)
+- [x] Notificações internas (bell com contagem de não lidas, polling)
+- [x] PWA (manifest + service worker via @ducanh2912/next-pwa)
+
+### Fase 3 — Inteligência — 🔜 Próxima fase
+
+- [ ] Motor de automações (if/then)
+- [ ] Integração com WhatsApp e e-mail
+- [ ] RBM AI Engine v1 (priorização e estimativas)
+- [ ] Analytics e dashboards avançados
+- [ ] Relatórios exportáveis
+- [ ] Controle de SLA
 
 ---
 
