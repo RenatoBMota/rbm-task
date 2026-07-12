@@ -89,7 +89,7 @@ export default function DashboardPage() {
     <div>
       <div className="mb-5">
         <h1 className="text-xl lg:text-2xl font-bold text-slate-900 dark:text-white">
-          Bom dia, {user?.full_name?.split(" ")[0]} 👋
+          Olá, {user?.full_name?.split(" ")[0]} 👋
         </h1>
         <p className="text-slate-500 text-sm mt-0.5">Aqui está o resumo do seu dia</p>
       </div>
