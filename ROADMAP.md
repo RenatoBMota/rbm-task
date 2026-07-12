@@ -638,14 +638,25 @@ RBM TASK CORE
 - [x] Notificações internas (bell com contagem de não lidas, polling)
 - [x] PWA (manifest + service worker via @ducanh2912/next-pwa)
 
-### Fase 3 — Inteligência — 🔜 Próxima fase
+### Fase 3 — Inteligência — ✅ Concluída (WhatsApp pendente de provedor)
 
-- [ ] Motor de automações (if/then)
-- [ ] Integração com WhatsApp e e-mail
-- [ ] RBM AI Engine v1 (priorização e estimativas)
-- [ ] Analytics e dashboards avançados
-- [ ] Relatórios exportáveis
-- [ ] Controle de SLA
+- [x] Motor de automações (if/then): gatilhos (criada, status alterado, concluída, atrasada, SLA estourado) com ações (mudar status/prioridade, notificar, comentar, e-mail, webhook); log de execução por regra
+- [x] Integração com e-mail (SMTP configurável via `.env`, desativada até credenciais serem informadas)
+- [ ] Integração com WhatsApp — aguardando decisão de provedor; ação `whatsapp` já existe no motor de automações como stub desativado
+- [x] RBM AI Engine v1 heurístico (sem LLM): priorização automática por score, estimativa de tempo por histórico, detecção de tarefas em risco de SLA
+- [x] Analytics: tendência de conclusão, tarefas por status, cumprimento de SLA (`/dashboard/analytics`)
+- [x] Relatórios exportáveis (Excel e PDF)
+- [x] Controle de SLA: políticas configuráveis por prioridade, cálculo de status (no prazo/em risco/estourado), verificação automática a cada 15 min
+
+### Fase 4 — Empresarial e SaaS — 🔜 Próxima fase
+
+- [ ] Multiempresa (tenant isolation)
+- [ ] Planos e faturamento
+- [ ] API pública documentada
+- [ ] Integrações WMS, YMS, DRP
+- [ ] Segurança avançada (MFA, auditoria completa)
+- [ ] App mobile nativo (React Native ou Flutter)
+- [ ] Kubernetes e escalabilidade automática
 
 ---
 
