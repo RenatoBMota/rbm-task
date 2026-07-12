@@ -117,7 +117,9 @@ export default function ReportsPage() {
               className="input w-56 py-1.5"
               value={effectiveProjectId ?? ""}
               onChange={(e) => setProjectId(Number(e.target.value))}
+              disabled={projects.length === 0}
             >
+              {projects.length === 0 && <option value="">Nenhum projeto</option>}
               {projects.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.name}
