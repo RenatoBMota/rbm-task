@@ -53,5 +53,5 @@ def auth_headers(token: str) -> dict:
 
 
 def get_default_workspace_id(client: TestClient, headers: dict) -> int:
-    workspaces = client.get("/api/v1/workspaces/", headers=headers).json()
+    workspaces = client.get("/api/v1/workspaces", headers=headers).json()
     return workspaces[0]["id"]

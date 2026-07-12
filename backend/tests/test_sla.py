@@ -5,7 +5,7 @@ def test_default_sla_policies_returned(client):
     token = register_and_login(client)
     headers = auth_headers(token)
 
-    response = client.get("/api/v1/sla-policies/", headers=headers)
+    response = client.get("/api/v1/sla-policies", headers=headers)
     assert response.status_code == 200
     policies = {p["priority"]: p["target_hours"] for p in response.json()}
     assert policies == {"P1": 4, "P2": 24, "P3": 72, "P4": 168}
@@ -34,12 +34,12 @@ def test_task_sla_status_on_time_without_due_date(client):
     headers = auth_headers(token)
     workspace_id = get_default_workspace_id(client, headers)
     project = client.post(
-        "/api/v1/projects/", json={"name": "P", "workspace_id": workspace_id}, headers=headers
+        "/api/v1/projects", json={"name": "P", "workspace_id": workspace_id}, headers=headers
     ).json()
     task = client.post(
-        "/api/v1/tasks/", json={"title": "T", "project_id": project["id"]}, headers=headers
+        "/api/v1/tasks", json={"title": "T", "project_id": project["id"]}, headers=headers
     ).json()
 
-    response = client.get(f"/api/v1/tasks/{task['id']}/sla/", headers=headers)
+    response = client.get(f"/api/v1/tasks/{task['id']}/sla", headers=headers)
     assert response.status_code == 200
     assert response.json()["status"] == "on_time"

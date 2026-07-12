@@ -55,7 +55,7 @@ def _member_out(member: WorkspaceMember) -> WorkspaceMemberOut:
     )
 
 
-@router.get("/", response_model=list[WorkspaceOut])
+@router.get("", response_model=list[WorkspaceOut])
 def list_workspaces(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -64,7 +64,7 @@ def list_workspaces(
     return [_workspace_out(w, get_member(db, w.id, current_user.id).role) for w in workspaces]
 
 
-@router.post("/", response_model=WorkspaceOut, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=WorkspaceOut, status_code=status.HTTP_201_CREATED)
 def create(
     workspace_in: WorkspaceCreate,
     db: Session = Depends(get_db),

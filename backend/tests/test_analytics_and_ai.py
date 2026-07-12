@@ -4,10 +4,10 @@ from tests.conftest import register_and_login, auth_headers, get_default_workspa
 def _create_task(client, headers, **overrides):
     workspace_id = get_default_workspace_id(client, headers)
     project = client.post(
-        "/api/v1/projects/", json={"name": "P", "workspace_id": workspace_id}, headers=headers
+        "/api/v1/projects", json={"name": "P", "workspace_id": workspace_id}, headers=headers
     ).json()
     payload = {"title": "T", "project_id": project["id"], **overrides}
-    return client.post("/api/v1/tasks/", json=payload, headers=headers).json()
+    return client.post("/api/v1/tasks", json=payload, headers=headers).json()
 
 
 def test_analytics_endpoints_do_not_error_when_empty(client):

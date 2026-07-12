@@ -10,7 +10,7 @@ from app.schemas.notification import NotificationOut
 router = APIRouter(prefix="/notifications", tags=["notifications"])
 
 
-@router.get("/", response_model=list[NotificationOut])
+@router.get("", response_model=list[NotificationOut])
 def list_notifications(
     unread_only: bool = False,
     db: Session = Depends(get_db),

@@ -23,7 +23,7 @@ from app.schemas.reminder import ReminderCreate, ReminderOut
 router = APIRouter(prefix="/tasks", tags=["tasks"])
 
 
-@router.get("/", response_model=list[TaskOut])
+@router.get("", response_model=list[TaskOut])
 def list_tasks(
     project_id: int | None = None,
     skip: int = 0,
@@ -63,7 +63,7 @@ def list_board_tasks(
     return get_board_tasks(db, project_id)
 
 
-@router.post("/", response_model=TaskOut, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=TaskOut, status_code=status.HTTP_201_CREATED)
 def create(
     task_in: TaskCreate,
     db: Session = Depends(get_db),

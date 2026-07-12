@@ -11,7 +11,7 @@ from app.schemas.sla import SLAPolicyOut, SLAPolicyUpdate, TaskSLAOut
 router = APIRouter(prefix="/sla-policies", tags=["sla"])
 
 
-@router.get("/", response_model=list[SLAPolicyOut])
+@router.get("", response_model=list[SLAPolicyOut])
 def list_policies(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -36,7 +36,7 @@ def update_policy(
 sla_task_router = APIRouter(prefix="/tasks/{task_id}/sla", tags=["sla"])
 
 
-@sla_task_router.get("/", response_model=TaskSLAOut)
+@sla_task_router.get("", response_model=TaskSLAOut)
 def get_task_sla(
     task_id: int,
     db: Session = Depends(get_db),

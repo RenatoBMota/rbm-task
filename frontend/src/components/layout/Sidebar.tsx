@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LayoutDashboard, FolderOpen, CheckSquare, KanbanSquare, Calendar, BarChart3, Zap, LogOut } from "lucide-react";
 import { useAuthStore } from "@/store/auth";
+import { WorkspaceSwitcher } from "@/components/workspace/WorkspaceSwitcher";
 import { clsx } from "clsx";
 
 const navItems = [
@@ -30,6 +31,8 @@ export function Sidebar() {
         <h1 className="text-white font-bold text-lg tracking-wide">RBM TASK</h1>
         <p className="text-slate-400 text-xs mt-0.5">Enterprise</p>
       </div>
+
+      <WorkspaceSwitcher />
 
       <nav className="flex-1 px-3 py-4 space-y-1">
         {items.map(({ href, label, icon: Icon }) => (

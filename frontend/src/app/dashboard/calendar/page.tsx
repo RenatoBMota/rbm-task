@@ -30,7 +30,7 @@ export default function CalendarPage() {
 
   const { data: tasks = [] } = useQuery<Task[]>({
     queryKey: ["tasks"],
-    queryFn: () => api.get("/tasks/", { params: { limit: 500 } }).then((r) => r.data),
+    queryFn: () => api.get("/tasks", { params: { limit: 500 } }).then((r) => r.data),
   });
 
   const monthStart = startOfMonth(cursor);

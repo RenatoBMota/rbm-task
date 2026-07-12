@@ -5,6 +5,7 @@ import { CheckCircle2, Clock, AlertCircle, FolderOpen, Sparkles, ShieldAlert } f
 import { clsx } from "clsx";
 import api from "@/lib/api";
 import { useAuthStore } from "@/store/auth";
+import { useWorkspaces } from "@/hooks/useWorkspaces";
 
 interface PrioritySuggestion {
   task_id: number;
@@ -55,14 +56,17 @@ export default function DashboardPage() {
     queryFn: () => api.get("/tasks/overdue").then((r) => r.data),
   });
 
+  const { currentWorkspaceId } = useWorkspaces();
+
   const { data: projects = [] } = useQuery<Project[]>({
-    queryKey: ["projects"],
-    queryFn: () => api.get("/projects/").then((r) => r.data),
+    queryKey: ["projects", currentWorkspaceId],
+    queryFn: () => api.get("/projects", { params: { workspace_id: currentWorkspaceId } }).then((r) => r.data),
+    enabled: !!currentWorkspaceId,
   });
 
   const { data: allTasks = [] } = useQuery<Task[]>({
     queryKey: ["tasks"],
-    queryFn: () => api.get("/tasks/").then((r) => r.data),
+    queryFn: () => api.get("/tasks").then((r) => r.data),
   });
 
   const { data: suggestions = [] } = useQuery<PrioritySuggestion[]>({

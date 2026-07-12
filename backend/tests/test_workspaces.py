@@ -5,7 +5,7 @@ def test_register_creates_default_workspace(client):
     token = register_and_login(client)
     headers = auth_headers(token)
 
-    response = client.get("/api/v1/workspaces/", headers=headers)
+    response = client.get("/api/v1/workspaces", headers=headers)
     assert response.status_code == 200
     workspaces = response.json()
     assert len(workspaces) == 1
@@ -16,11 +16,11 @@ def test_create_workspace(client):
     token = register_and_login(client)
     headers = auth_headers(token)
 
-    response = client.post("/api/v1/workspaces/", json={"name": "Loja Online"}, headers=headers)
+    response = client.post("/api/v1/workspaces", json={"name": "Loja Online"}, headers=headers)
     assert response.status_code == 201
     assert response.json()["my_role"] == "owner"
 
-    workspaces = client.get("/api/v1/workspaces/", headers=headers).json()
+    workspaces = client.get("/api/v1/workspaces", headers=headers).json()
     assert len(workspaces) == 2
 
 
@@ -61,12 +61,12 @@ def test_member_added_can_see_workspace_projects(client):
     )
 
     project = client.post(
-        "/api/v1/projects/", json={"name": "Projeto Compartilhado", "workspace_id": workspace_id},
+        "/api/v1/projects", json={"name": "Projeto Compartilhado", "workspace_id": workspace_id},
         headers=owner_headers,
     ).json()
 
     listing = client.get(
-        "/api/v1/projects/", params={"workspace_id": workspace_id}, headers=member_headers
+        "/api/v1/projects", params={"workspace_id": workspace_id}, headers=member_headers
     )
     assert listing.status_code == 200
     assert any(p["id"] == project["id"] for p in listing.json())
@@ -80,7 +80,7 @@ def test_non_member_cannot_see_workspace_projects(client):
     workspace_id = get_default_workspace_id(client, owner_headers)
 
     project = client.post(
-        "/api/v1/projects/", json={"name": "Privado", "workspace_id": workspace_id},
+        "/api/v1/projects", json={"name": "Privado", "workspace_id": workspace_id},
         headers=owner_headers,
     ).json()
 
@@ -88,7 +88,7 @@ def test_non_member_cannot_see_workspace_projects(client):
     assert response.status_code == 404
 
     listing = client.get(
-        "/api/v1/projects/", params={"workspace_id": workspace_id}, headers=outsider_headers
+        "/api/v1/projects", params={"workspace_id": workspace_id}, headers=outsider_headers
     )
     assert listing.status_code == 404
 
@@ -106,11 +106,11 @@ def test_workspace_member_sees_all_tasks_in_project_board(client):
         headers=owner_headers,
     )
     project = client.post(
-        "/api/v1/projects/", json={"name": "Projeto", "workspace_id": workspace_id},
+        "/api/v1/projects", json={"name": "Projeto", "workspace_id": workspace_id},
         headers=owner_headers,
     ).json()
     task = client.post(
-        "/api/v1/tasks/", json={"title": "Tarefa do owner", "project_id": project["id"]},
+        "/api/v1/tasks", json={"title": "Tarefa do owner", "project_id": project["id"]},
         headers=owner_headers,
     ).json()
 

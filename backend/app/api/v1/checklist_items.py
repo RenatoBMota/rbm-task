@@ -13,7 +13,7 @@ from app.schemas.checklist_item import ChecklistItemCreate, ChecklistItemUpdate,
 router = APIRouter(prefix="/tasks/{task_id}/checklist", tags=["checklist"])
 
 
-@router.get("/", response_model=list[ChecklistItemOut])
+@router.get("", response_model=list[ChecklistItemOut])
 def list_items(
     task_id: int,
     db: Session = Depends(get_db),
@@ -23,7 +23,7 @@ def list_items(
     return get_checklist_items(db, task_id)
 
 
-@router.post("/", response_model=ChecklistItemOut, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=ChecklistItemOut, status_code=status.HTTP_201_CREATED)
 def create_item(
     task_id: int,
     item_in: ChecklistItemCreate,

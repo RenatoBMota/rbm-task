@@ -10,7 +10,7 @@ from app.schemas.comment import CommentCreate, CommentOut
 router = APIRouter(prefix="/tasks/{task_id}/comments", tags=["comments"])
 
 
-@router.get("/", response_model=list[CommentOut])
+@router.get("", response_model=list[CommentOut])
 def list_comments(
     task_id: int,
     db: Session = Depends(get_db),
@@ -20,7 +20,7 @@ def list_comments(
     return get_comments(db, task_id)
 
 
-@router.post("/", response_model=CommentOut, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=CommentOut, status_code=status.HTTP_201_CREATED)
 def create(
     task_id: int,
     comment_in: CommentCreate,

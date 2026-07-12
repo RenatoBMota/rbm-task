@@ -9,7 +9,7 @@ from app.schemas.label import LabelCreate, LabelUpdate, LabelOut
 router = APIRouter(prefix="/labels", tags=["labels"])
 
 
-@router.get("/", response_model=list[LabelOut])
+@router.get("", response_model=list[LabelOut])
 def list_labels(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -17,7 +17,7 @@ def list_labels(
     return get_labels(db, owner_id=current_user.id)
 
 
-@router.post("/", response_model=LabelOut, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=LabelOut, status_code=status.HTTP_201_CREATED)
 def create(
     label_in: LabelCreate,
     db: Session = Depends(get_db),

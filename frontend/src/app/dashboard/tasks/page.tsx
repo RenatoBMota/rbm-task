@@ -38,12 +38,12 @@ export default function TasksPage() {
 
   const { data: tasks = [], isLoading } = useQuery<Task[]>({
     queryKey: ["tasks"],
-    queryFn: () => api.get("/tasks/").then((r) => r.data),
+    queryFn: () => api.get("/tasks").then((r) => r.data),
   });
 
   const createMutation = useMutation({
     mutationFn: (data: typeof form) =>
-      api.post("/tasks/", { ...data, due_date: data.due_date || null }),
+      api.post("/tasks", { ...data, due_date: data.due_date || null }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["tasks"] });
       setShowForm(false);

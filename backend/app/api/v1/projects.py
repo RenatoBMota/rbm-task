@@ -25,7 +25,7 @@ def _get_project_with_access(db: Session, project_id: int, user_id: int):
     return project
 
 
-@router.get("/", response_model=list[ProjectOut])
+@router.get("", response_model=list[ProjectOut])
 def list_projects(
     workspace_id: int,
     skip: int = 0,
@@ -42,7 +42,7 @@ def list_projects(
     )
 
 
-@router.post("/", response_model=ProjectOut, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=ProjectOut, status_code=status.HTTP_201_CREATED)
 def create(
     project_in: ProjectCreate,
     db: Session = Depends(get_db),

@@ -11,7 +11,7 @@ from app.schemas.automation import (
 router = APIRouter(prefix="/automations", tags=["automations"])
 
 
-@router.get("/", response_model=list[AutomationRuleOut])
+@router.get("", response_model=list[AutomationRuleOut])
 def list_rules(
     db: Session = Depends(get_db),
     _admin: User = Depends(get_current_admin),
@@ -19,7 +19,7 @@ def list_rules(
     return get_rules(db)
 
 
-@router.post("/", response_model=AutomationRuleOut, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=AutomationRuleOut, status_code=status.HTTP_201_CREATED)
 def create(
     rule_in: AutomationRuleCreate,
     db: Session = Depends(get_db),

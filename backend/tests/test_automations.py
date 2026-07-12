@@ -6,11 +6,11 @@ def test_automation_rule_fires_notify_and_comment_on_task_created(client):
     headers = auth_headers(token)
     workspace_id = get_default_workspace_id(client, headers)
     project = client.post(
-        "/api/v1/projects/", json={"name": "P", "workspace_id": workspace_id}, headers=headers
+        "/api/v1/projects", json={"name": "P", "workspace_id": workspace_id}, headers=headers
     ).json()
 
     rule = client.post(
-        "/api/v1/automations/",
+        "/api/v1/automations",
         json={
             "name": "Alerta P1",
             "trigger_event": "task_created",
@@ -26,15 +26,15 @@ def test_automation_rule_fires_notify_and_comment_on_task_created(client):
     rule_id = rule.json()["id"]
 
     task = client.post(
-        "/api/v1/tasks/",
+        "/api/v1/tasks",
         json={"title": "Urgente", "priority": "P1", "project_id": project["id"]},
         headers=headers,
     ).json()
 
-    comments = client.get(f"/api/v1/tasks/{task['id']}/comments/", headers=headers).json()
+    comments = client.get(f"/api/v1/tasks/{task['id']}/comments", headers=headers).json()
     assert any(c["content"] == "Revisar com prioridade" for c in comments)
 
-    notifications = client.get("/api/v1/notifications/", headers=headers).json()
+    notifications = client.get("/api/v1/notifications", headers=headers).json()
     assert any(n["message"] == "Urgente!" for n in notifications)
 
     logs = client.get(f"/api/v1/automations/{rule_id}/logs", headers=headers).json()
@@ -47,11 +47,11 @@ def test_automation_rule_does_not_fire_when_condition_mismatches(client):
     headers = auth_headers(token)
     workspace_id = get_default_workspace_id(client, headers)
     project = client.post(
-        "/api/v1/projects/", json={"name": "P", "workspace_id": workspace_id}, headers=headers
+        "/api/v1/projects", json={"name": "P", "workspace_id": workspace_id}, headers=headers
     ).json()
 
     rule = client.post(
-        "/api/v1/automations/",
+        "/api/v1/automations",
         json={
             "name": "Alerta P1",
             "trigger_event": "task_created",
@@ -62,12 +62,12 @@ def test_automation_rule_does_not_fire_when_condition_mismatches(client):
     ).json()
 
     task = client.post(
-        "/api/v1/tasks/",
+        "/api/v1/tasks",
         json={"title": "Normal", "priority": "P4", "project_id": project["id"]},
         headers=headers,
     ).json()
 
-    comments = client.get(f"/api/v1/tasks/{task['id']}/comments/", headers=headers).json()
+    comments = client.get(f"/api/v1/tasks/{task['id']}/comments", headers=headers).json()
     assert comments == []
 
     logs = client.get(f"/api/v1/automations/{rule['id']}/logs", headers=headers).json()
@@ -79,7 +79,7 @@ def test_inactive_rule_toggle(client):
     headers = auth_headers(token)
 
     rule = client.post(
-        "/api/v1/automations/",
+        "/api/v1/automations",
         json={"name": "R", "trigger_event": "task_created", "conditions": {}, "actions": []},
         headers=headers,
     ).json()

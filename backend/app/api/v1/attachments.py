@@ -12,7 +12,7 @@ from app.schemas.attachment import AttachmentOut, AttachmentDownloadURL
 router = APIRouter(prefix="/tasks/{task_id}/attachments", tags=["attachments"])
 
 
-@router.get("/", response_model=list[AttachmentOut])
+@router.get("", response_model=list[AttachmentOut])
 def list_attachments(
     task_id: int,
     db: Session = Depends(get_db),
@@ -22,7 +22,7 @@ def list_attachments(
     return get_attachments(db, task_id)
 
 
-@router.post("/", response_model=AttachmentOut, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=AttachmentOut, status_code=status.HTTP_201_CREATED)
 async def upload_attachment(
     task_id: int,
     file: UploadFile = File(...),

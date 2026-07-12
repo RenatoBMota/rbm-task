@@ -1,6 +1,14 @@
 export type TaskPriority = "P1" | "P2" | "P3" | "P4";
 export type TaskStatus = "todo" | "in_progress" | "in_review" | "done" | "cancelled";
 
+export type TaskRecurrence = "none" | "daily" | "weekly" | "monthly";
+
+export interface Label {
+  id: number;
+  name: string;
+  color: string;
+}
+
 export interface Task {
   id: number;
   title: string;
@@ -15,9 +23,13 @@ export interface Task {
   project_id: number | null;
   assignee_id: number | null;
   parent_id: number | null;
+  recurrence: TaskRecurrence;
+  location: string | null;
+  is_archived: boolean;
   created_at: string;
   updated_at: string;
   subtask_count: number;
+  labels: Label[];
 }
 
 export interface Project {
@@ -27,6 +39,28 @@ export interface Project {
   color: string;
   icon: string;
   is_archived: boolean;
+  is_template: boolean;
+  workspace_id: number | null;
+}
+
+export type WorkspaceRole = "owner" | "admin" | "member";
+
+export interface Workspace {
+  id: number;
+  name: string;
+  color: string;
+  icon: string;
+  owner_id: number;
+  created_at: string;
+  my_role: WorkspaceRole;
+}
+
+export interface WorkspaceMember {
+  id: number;
+  user_id: number;
+  email: string;
+  full_name: string;
+  role: WorkspaceRole;
 }
 
 export interface ChecklistItem {

@@ -18,6 +18,10 @@ import type { Task, TaskStatus, Project } from "@/lib/types";
 import { KanbanColumn } from "@/components/kanban/KanbanColumn";
 import { KanbanCard } from "@/components/kanban/KanbanCard";
 import { TaskDetailModal } from "@/components/tasks/TaskDetailModal";
+import { useWorkspaces } from "@/hooks/useWorkspaces";
+
+const EMPTY_PROJECTS: Project[] = [];
+const EMPTY_TASKS: Task[] = [];
 
 function groupByStatus(tasks: Task[]): Record<TaskStatus, Task[]> {
   const grouped = Object.fromEntries(TASK_STATUSES.map((s) => [s.value, [] as Task[]])) as Record<
@@ -42,16 +46,23 @@ export default function KanbanPage() {
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
-  const { data: projects = [] } = useQuery<Project[]>({
-    queryKey: ["projects"],
-    queryFn: () => api.get("/projects/").then((r) => r.data),
+  const { currentWorkspaceId } = useWorkspaces();
+
+  const { data: projects = EMPTY_PROJECTS } = useQuery<Project[]>({
+    queryKey: ["projects", currentWorkspaceId],
+    queryFn: () => api.get("/projects", { params: { workspace_id: currentWorkspaceId } }).then((r) => r.data),
+    enabled: !!currentWorkspaceId,
   });
+
+  useEffect(() => {
+    setProjectId(null);
+  }, [currentWorkspaceId]);
 
   useEffect(() => {
     if (!projectId && projects.length > 0) setProjectId(projects[0].id);
   }, [projects, projectId]);
 
-  const { data: tasks = [] } = useQuery<Task[]>({
+  const { data: tasks = EMPTY_TASKS } = useQuery<Task[]>({
     queryKey: ["tasks", "board", projectId],
     queryFn: () => api.get("/tasks/board", { params: { project_id: projectId } }).then((r) => r.data),
     enabled: !!projectId,

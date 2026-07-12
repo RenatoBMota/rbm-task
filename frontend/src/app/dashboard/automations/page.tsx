@@ -70,12 +70,12 @@ export default function AutomationsPage() {
 
   const { data: rules = [] } = useQuery<AutomationRule[]>({
     queryKey: ["automations"],
-    queryFn: () => api.get("/automations/").then((r) => r.data),
+    queryFn: () => api.get("/automations").then((r) => r.data),
   });
 
   const createMutation = useMutation({
     mutationFn: () =>
-      api.post("/automations/", {
+      api.post("/automations", {
         name,
         trigger_event: triggerEvent,
         conditions: priorityCondition ? { priority: priorityCondition } : {},

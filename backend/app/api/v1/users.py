@@ -23,7 +23,7 @@ def update_me(
     return update_user(db, current_user, user_in)
 
 
-@router.get("/", response_model=list[UserOut])
+@router.get("", response_model=list[UserOut])
 def list_users(
     db: Session = Depends(get_db),
     _admin: User = Depends(get_current_admin),

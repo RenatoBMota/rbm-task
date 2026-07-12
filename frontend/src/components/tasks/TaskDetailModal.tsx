@@ -26,23 +26,23 @@ export function TaskDetailModal({ taskId, onClose }: { taskId: number; onClose: 
 
   const { data: checklist = [] } = useQuery<ChecklistItem[]>({
     queryKey: ["task", taskId, "checklist"],
-    queryFn: () => api.get(`/tasks/${taskId}/checklist/`).then((r) => r.data),
+    queryFn: () => api.get(`/tasks/${taskId}/checklist`).then((r) => r.data),
   });
 
   const { data: comments = [] } = useQuery<Comment[]>({
     queryKey: ["task", taskId, "comments"],
-    queryFn: () => api.get(`/tasks/${taskId}/comments/`).then((r) => r.data),
+    queryFn: () => api.get(`/tasks/${taskId}/comments`).then((r) => r.data),
   });
 
   const { data: attachments = [] } = useQuery<Attachment[]>({
     queryKey: ["task", taskId, "attachments"],
-    queryFn: () => api.get(`/tasks/${taskId}/attachments/`).then((r) => r.data),
+    queryFn: () => api.get(`/tasks/${taskId}/attachments`).then((r) => r.data),
   });
 
   const invalidate = (key: string) => qc.invalidateQueries({ queryKey: ["task", taskId, key] });
 
   const addChecklistItem = useMutation({
-    mutationFn: (title: string) => api.post(`/tasks/${taskId}/checklist/`, { title }),
+    mutationFn: (title: string) => api.post(`/tasks/${taskId}/checklist`, { title }),
     onSuccess: () => {
       invalidate("checklist");
       setNewChecklistTitle("");
@@ -61,7 +61,7 @@ export function TaskDetailModal({ taskId, onClose }: { taskId: number; onClose: 
   });
 
   const addComment = useMutation({
-    mutationFn: (content: string) => api.post(`/tasks/${taskId}/comments/`, { content }),
+    mutationFn: (content: string) => api.post(`/tasks/${taskId}/comments`, { content }),
     onSuccess: () => {
       invalidate("comments");
       setNewComment("");
@@ -72,7 +72,7 @@ export function TaskDetailModal({ taskId, onClose }: { taskId: number; onClose: 
     mutationFn: (file: File) => {
       const formData = new FormData();
       formData.append("file", file);
-      return api.post(`/tasks/${taskId}/attachments/`, formData, {
+      return api.post(`/tasks/${taskId}/attachments`, formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
     },

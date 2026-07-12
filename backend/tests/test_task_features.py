@@ -4,7 +4,7 @@ from tests.conftest import register_and_login, auth_headers, get_default_workspa
 def _create_project(client, headers, name="P"):
     workspace_id = get_default_workspace_id(client, headers)
     return client.post(
-        "/api/v1/projects/", json={"name": name, "workspace_id": workspace_id}, headers=headers
+        "/api/v1/projects", json={"name": name, "workspace_id": workspace_id}, headers=headers
     ).json()
 
 
@@ -13,7 +13,7 @@ def test_completing_recurring_task_creates_next_occurrence(client):
     headers = auth_headers(token)
     project = _create_project(client, headers)
     task = client.post(
-        "/api/v1/tasks/",
+        "/api/v1/tasks",
         json={
             "title": "Reunião semanal", "project_id": project["id"],
             "due_date": "2026-01-05T10:00:00Z", "recurrence": "weekly",
@@ -24,7 +24,7 @@ def test_completing_recurring_task_creates_next_occurrence(client):
     client.put(f"/api/v1/tasks/{task['id']}", json={"is_completed": True}, headers=headers)
 
     all_tasks = client.get(
-        "/api/v1/tasks/", params={"project_id": project["id"]}, headers=headers
+        "/api/v1/tasks", params={"project_id": project["id"]}, headers=headers
     ).json()
     titles = [t["title"] for t in all_tasks]
     assert titles.count("Reunião semanal") == 2
@@ -37,7 +37,7 @@ def test_task_history_records_status_change(client):
     headers = auth_headers(token)
     project = _create_project(client, headers)
     task = client.post(
-        "/api/v1/tasks/", json={"title": "T", "project_id": project["id"]}, headers=headers
+        "/api/v1/tasks", json={"title": "T", "project_id": project["id"]}, headers=headers
     ).json()
 
     client.patch(
@@ -53,10 +53,10 @@ def test_task_dependency_blocks_status_change(client):
     headers = auth_headers(token)
     project = _create_project(client, headers)
     blocker = client.post(
-        "/api/v1/tasks/", json={"title": "Bloqueadora", "project_id": project["id"]}, headers=headers
+        "/api/v1/tasks", json={"title": "Bloqueadora", "project_id": project["id"]}, headers=headers
     ).json()
     task = client.post(
-        "/api/v1/tasks/", json={"title": "Bloqueada", "project_id": project["id"]}, headers=headers
+        "/api/v1/tasks", json={"title": "Bloqueada", "project_id": project["id"]}, headers=headers
     ).json()
 
     client.post(
@@ -83,7 +83,7 @@ def test_duplicate_project_copies_tasks_as_template(client):
     headers = auth_headers(token)
     project = _create_project(client, headers, name="Original")
     client.post(
-        "/api/v1/tasks/",
+        "/api/v1/tasks",
         json={"title": "Passo 1", "project_id": project["id"], "priority": "P2"},
         headers=headers,
     )
@@ -95,7 +95,7 @@ def test_duplicate_project_copies_tasks_as_template(client):
     new_project = duplicate.json()
 
     tasks = client.get(
-        "/api/v1/tasks/", params={"project_id": new_project["id"]}, headers=headers
+        "/api/v1/tasks", params={"project_id": new_project["id"]}, headers=headers
     ).json()
     assert len(tasks) == 1
     assert tasks[0]["title"] == "Passo 1"
@@ -107,10 +107,10 @@ def test_labels_attach_and_detach(client):
     headers = auth_headers(token)
     project = _create_project(client, headers)
     task = client.post(
-        "/api/v1/tasks/", json={"title": "T", "project_id": project["id"]}, headers=headers
+        "/api/v1/tasks", json={"title": "T", "project_id": project["id"]}, headers=headers
     ).json()
     label = client.post(
-        "/api/v1/labels/", json={"name": "Urgente", "color": "#ff0000"}, headers=headers
+        "/api/v1/labels", json={"name": "Urgente", "color": "#ff0000"}, headers=headers
     ).json()
 
     attach = client.post(f"/api/v1/tasks/{task['id']}/labels/{label['id']}", headers=headers)
@@ -126,7 +126,7 @@ def test_task_reminders_lifecycle(client):
     headers = auth_headers(token)
     project = _create_project(client, headers)
     task = client.post(
-        "/api/v1/tasks/", json={"title": "T", "project_id": project["id"]}, headers=headers
+        "/api/v1/tasks", json={"title": "T", "project_id": project["id"]}, headers=headers
     ).json()
 
     create = client.post(
@@ -149,7 +149,7 @@ def test_duplicate_and_archive_task(client):
     headers = auth_headers(token)
     project = _create_project(client, headers)
     task = client.post(
-        "/api/v1/tasks/", json={"title": "Original", "project_id": project["id"]}, headers=headers
+        "/api/v1/tasks", json={"title": "Original", "project_id": project["id"]}, headers=headers
     ).json()
 
     duplicate = client.post(f"/api/v1/tasks/{task['id']}/duplicate", json={}, headers=headers)

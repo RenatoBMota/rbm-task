@@ -6,7 +6,7 @@ def test_admin_can_list_users_and_change_role(client):
     admin_headers = auth_headers(admin_token)
     register_and_login(client, email="member@rbm.com")
 
-    listing = client.get("/api/v1/users/", headers=admin_headers)
+    listing = client.get("/api/v1/users", headers=admin_headers)
     assert listing.status_code == 200
     assert len(listing.json()) == 2
 
@@ -22,7 +22,7 @@ def test_member_cannot_list_users(client):
     register_and_login(client, email="admin@rbm.com")
     member_token = register_and_login(client, email="member@rbm.com")
 
-    response = client.get("/api/v1/users/", headers=auth_headers(member_token))
+    response = client.get("/api/v1/users", headers=auth_headers(member_token))
     assert response.status_code == 403
 
 
@@ -31,10 +31,10 @@ def test_reports_xlsx_and_pdf_download(client):
     headers = auth_headers(token)
     workspace_id = get_default_workspace_id(client, headers)
     project = client.post(
-        "/api/v1/projects/", json={"name": "P", "workspace_id": workspace_id}, headers=headers
+        "/api/v1/projects", json={"name": "P", "workspace_id": workspace_id}, headers=headers
     ).json()
     client.post(
-        "/api/v1/tasks/", json={"title": "T", "project_id": project["id"]}, headers=headers
+        "/api/v1/tasks", json={"title": "T", "project_id": project["id"]}, headers=headers
     )
 
     xlsx = client.get("/api/v1/reports/tasks.xlsx", headers=headers)

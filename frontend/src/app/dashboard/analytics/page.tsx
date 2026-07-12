@@ -13,6 +13,7 @@ import {
 } from "recharts";
 import { FileSpreadsheet, FileText } from "lucide-react";
 import api from "@/lib/api";
+import { useWorkspaces } from "@/hooks/useWorkspaces";
 import type { Project } from "@/lib/types";
 
 interface TrendPoint {
@@ -43,10 +44,12 @@ const STATUS_LABELS: Record<string, string> = {
 
 export default function AnalyticsPage() {
   const [projectId, setProjectId] = useState<number | "">("");
+  const { currentWorkspaceId } = useWorkspaces();
 
   const { data: projects = [] } = useQuery<Project[]>({
-    queryKey: ["projects"],
-    queryFn: () => api.get("/projects/").then((r) => r.data),
+    queryKey: ["projects", currentWorkspaceId],
+    queryFn: () => api.get("/projects", { params: { workspace_id: currentWorkspaceId } }).then((r) => r.data),
+    enabled: !!currentWorkspaceId,
   });
 
   const params = projectId ? { project_id: projectId } : {};
