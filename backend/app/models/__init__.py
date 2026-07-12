@@ -14,3 +14,7 @@ from app.models.label import Label, task_labels
 from app.models.reminder import Reminder
 from app.models.resource import Resource, ResourceAssignment
 from app.models.baseline import GanttBaseline, GanttBaselineTask
+from app.models.okr import (
+    Objective, KeyResult, KeyResultCheckIn, Initiative, OkrTask, OkrAction,
+    IndicatorType, KRCadence, KRDirection,
+)

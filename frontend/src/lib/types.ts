@@ -149,6 +149,206 @@ export interface Recap {
   top_contributors: RecapContributor[];
 }
 
+export type IndicatorType = "quantity" | "value" | "percentage" | "decimal" | "integer";
+export type KRCadence = "weekly" | "biweekly" | "monthly";
+export type KRDirection = "increase" | "decrease";
+export type TrendDirection = "up" | "down" | "flat";
+export type TrendLabel = "positive" | "negative" | "stable";
+
+export interface Objective {
+  id: number;
+  workspace_id: number;
+  title: string;
+  description: string | null;
+  start_date: string;
+  end_date: string;
+  owner_id: number | null;
+  created_at: string;
+}
+
+export interface KeyResultSummary {
+  id: number;
+  code: string;
+  title: string;
+  indicator_type: IndicatorType;
+  direction: KRDirection;
+  current_value: number | null;
+  target_value: number;
+  progress_percent: number;
+  trend_direction: TrendDirection;
+}
+
+export interface ObjectiveDetail {
+  id: number;
+  title: string;
+  description: string | null;
+  start_date: string;
+  end_date: string;
+  owner_id: number | null;
+  performance_percent: number;
+  key_results: KeyResultSummary[];
+}
+
+export interface KeyResult {
+  id: number;
+  objective_id: number;
+  code: string;
+  title: string;
+  indicator_type: IndicatorType;
+  direction: KRDirection;
+  cadence: KRCadence;
+  baseline_value: number;
+  target_value: number;
+  owner_id: number | null;
+  created_at: string;
+}
+
+export interface KRHistoryPoint {
+  period_label: string;
+  value: number;
+  target: number;
+}
+
+export interface InitiativeSummary {
+  id: number;
+  title: string;
+  weight_percent: number;
+  progress_percent: number;
+  contribution_percent: number;
+  is_completed: boolean;
+  task_count: number;
+}
+
+export interface KeyResultDetail {
+  id: number;
+  objective_id: number;
+  code: string;
+  title: string;
+  indicator_type: IndicatorType;
+  direction: KRDirection;
+  cadence: KRCadence;
+  baseline_value: number;
+  target_value: number;
+  owner_id: number | null;
+  current_value: number | null;
+  previous_value: number | null;
+  variation_abs: number | null;
+  variation_pct: number | null;
+  average_to_date: number | null;
+  best_value: number | null;
+  worst_value: number | null;
+  gap_to_target: number | null;
+  progress_percent: number;
+  trend_direction: TrendDirection;
+  trend_label: TrendLabel;
+  forecast_value: number | null;
+  forecast_hits_target: boolean | null;
+  score: number;
+  history: KRHistoryPoint[];
+  initiatives: InitiativeSummary[];
+  initiatives_rollup_percent: number;
+}
+
+export interface Initiative {
+  id: number;
+  key_result_id: number;
+  title: string;
+  weight_percent: number;
+  owner_id: number | null;
+  is_completed: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface OkrActionDetail {
+  id: number;
+  title: string;
+  weight_percent: number;
+  owner_id: number | null;
+  due_date: string | null;
+  is_completed: boolean;
+  progress_percent: number;
+}
+
+export interface OkrTaskDetail {
+  id: number;
+  title: string;
+  weight_percent: number;
+  owner_id: number | null;
+  due_date: string | null;
+  is_completed: boolean;
+  progress_percent: number;
+  actions: OkrActionDetail[];
+}
+
+export interface InitiativeDetail {
+  id: number;
+  key_result_id: number;
+  title: string;
+  weight_percent: number;
+  owner_id: number | null;
+  is_completed: boolean;
+  progress_percent: number;
+  tasks: OkrTaskDetail[];
+}
+
+export interface OkrTask {
+  id: number;
+  initiative_id: number;
+  title: string;
+  weight_percent: number;
+  owner_id: number | null;
+  due_date: string | null;
+  is_completed: boolean;
+  updated_at: string;
+}
+
+export interface OkrAction {
+  id: number;
+  task_id: number;
+  title: string;
+  weight_percent: number;
+  owner_id: number | null;
+  due_date: string | null;
+  is_completed: boolean;
+  updated_at: string;
+}
+
+export interface OkrExecutiveSummary {
+  objectives_count: number;
+  key_results_count: number;
+  initiatives_count: number;
+  tasks_count: number;
+  actions_count: number;
+  overall_performance_percent: number;
+  expected_performance_percent: number;
+  overdue_count: number;
+  on_time_percent: number;
+  completed_percent: number;
+}
+
+export interface OkrAlert {
+  level: "warning" | "critical";
+  entity_type: string;
+  entity_id: number;
+  entity_title: string;
+  message: string;
+}
+
+export const INDICATOR_TYPE_LABELS: Record<IndicatorType, string> = {
+  quantity: "Quantidade",
+  value: "Valor",
+  percentage: "Percentual",
+  decimal: "Decimal",
+  integer: "Inteiro",
+};
+
+export const KR_CADENCE_LABELS: Record<KRCadence, string> = {
+  weekly: "Semanal",
+  biweekly: "Quinzenal",
+  monthly: "Mensal",
+};
+
 export interface Project {
   id: number;
   name: string;

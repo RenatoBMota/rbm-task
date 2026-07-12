@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, FolderOpen, CheckSquare, KanbanSquare, Calendar, BarChart3, Zap, LogOut, Tag, GanttChartSquare, Users2, FileBarChart } from "lucide-react";
+import { LayoutDashboard, FolderOpen, CheckSquare, KanbanSquare, Calendar, BarChart3, Zap, LogOut, Tag, GanttChartSquare, Users2, FileBarChart, Target } from "lucide-react";
 import { useAuthStore } from "@/store/auth";
 import { WorkspaceSwitcher } from "@/components/workspace/WorkspaceSwitcher";
 import { clsx } from "clsx";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/dashboard/okr", label: "OKRs", icon: Target },
   { href: "/dashboard/projects", label: "Projetos", icon: FolderOpen },
   { href: "/dashboard/tasks", label: "Tarefas", icon: CheckSquare },
   { href: "/dashboard/kanban", label: "Kanban", icon: KanbanSquare },
@@ -45,7 +46,7 @@ export function Sidebar() {
             href={href}
             className={clsx(
               "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
-              pathname === href
+              pathname === href || pathname.startsWith(`${href}/`)
                 ? "bg-primary-600 text-white"
                 : "text-slate-400 hover:text-white hover:bg-slate-700"
             )}

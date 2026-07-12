@@ -18,6 +18,7 @@ import {
   Tag,
   Zap,
   LogOut,
+  Target,
 } from "lucide-react";
 import { clsx } from "clsx";
 import { useAuthStore } from "@/store/auth";
@@ -32,6 +33,7 @@ const PRIMARY = [
 ];
 
 const MORE_ITEMS = [
+  { href: "/dashboard/okr", label: "OKRs", icon: Target },
   { href: "/dashboard/projects", label: "Projetos", icon: FolderOpen },
   { href: "/dashboard/gantt", label: "Gantt", icon: GanttChartSquare },
   { href: "/dashboard/resources", label: "Recursos", icon: Users2 },
@@ -47,7 +49,7 @@ export function MobileBottomNav() {
   const { user, logout } = useAuthStore();
   const [sheetOpen, setSheetOpen] = useState(false);
   const moreItems = user?.role === "admin" ? [...MORE_ITEMS, ...ADMIN_MORE_ITEMS] : MORE_ITEMS;
-  const isMoreActive = moreItems.some((i) => i.href === pathname);
+  const isMoreActive = moreItems.some((i) => pathname === i.href || pathname.startsWith(`${i.href}/`));
 
   return (
     <>
@@ -111,7 +113,7 @@ export function MobileBottomNav() {
                   onClick={() => setSheetOpen(false)}
                   className={clsx(
                     "flex flex-col items-center justify-center gap-1.5 py-4 rounded-xl text-xs font-medium transition-colors",
-                    pathname === href
+                    pathname === href || pathname.startsWith(`${href}/`)
                       ? "bg-primary-50 text-primary-600 dark:bg-primary-600/10"
                       : "bg-surface-50 dark:bg-surface-800 text-slate-600 dark:text-slate-400 dark:text-slate-300"
                   )}
