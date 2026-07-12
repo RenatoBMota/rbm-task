@@ -10,6 +10,8 @@ class TaskBase(BaseModel):
     priority: TaskPriority = TaskPriority.P4
     status: TaskStatus = TaskStatus.TODO
     due_date: datetime | None = None
+    start_date: datetime | None = None
+    is_milestone: bool = False
     estimated_minutes: int | None = None
     project_id: int | None = None
     assignee_id: int | None = None
@@ -28,6 +30,8 @@ class TaskUpdate(BaseModel):
     priority: TaskPriority | None = None
     status: TaskStatus | None = None
     due_date: datetime | None = None
+    start_date: datetime | None = None
+    is_milestone: bool | None = None
     estimated_minutes: int | None = None
     project_id: int | None = None
     assignee_id: int | None = None

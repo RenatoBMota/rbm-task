@@ -8,7 +8,7 @@ from app.crud.task import (
 )
 from app.crud.task_history import get_history
 from app.crud.task_dependency import (
-    get_dependency, get_dependencies, add_dependency, remove_dependency,
+    get_dependency, get_dependencies, add_dependency, update_dependency, remove_dependency,
 )
 from app.crud.label import get_label, attach_label, detach_label
 from app.crud.reminder import get_reminder, get_reminders, create_reminder, delete_reminder
@@ -17,7 +17,7 @@ from app.core.exceptions import TaskBlockedError
 from app.models.user import User
 from app.schemas.task import TaskCreate, TaskUpdate, TaskOut, TaskMove, TaskDuplicate
 from app.schemas.task_history import TaskHistoryOut
-from app.schemas.task_dependency import TaskDependencyCreate, TaskDependencyOut
+from app.schemas.task_dependency import TaskDependencyCreate, TaskDependencyUpdate, TaskDependencyOut
 from app.schemas.reminder import ReminderCreate, ReminderOut
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
@@ -140,6 +140,19 @@ def list_history(
     return get_history(db, task_id)
 
 
+def _dependency_out(dep) -> TaskDependencyOut:
+    return TaskDependencyOut(
+        id=dep.id,
+        task_id=dep.task_id,
+        depends_on_id=dep.depends_on_id,
+        depends_on_title=dep.depends_on.title,
+        depends_on_completed=dep.depends_on.is_completed,
+        dependency_type=dep.dependency_type,
+        lag_days=dep.lag_days,
+        hardness=dep.hardness,
+    )
+
+
 @router.get("/{task_id}/dependencies", response_model=list[TaskDependencyOut])
 def list_dependencies(
     task_id: int,
@@ -147,15 +160,7 @@ def list_dependencies(
     current_user: User = Depends(get_current_user),
 ):
     require_task_access(db, task_id, current_user.id)
-    return [
-        TaskDependencyOut(
-            id=dep.id,
-            depends_on_id=dep.depends_on_id,
-            depends_on_title=dep.depends_on.title,
-            depends_on_completed=dep.depends_on.is_completed,
-        )
-        for dep in get_dependencies(db, task_id)
-    ]
+    return [_dependency_out(dep) for dep in get_dependencies(db, task_id)]
 
 
 @router.post("/{task_id}/dependencies", response_model=TaskDependencyOut, status_code=status.HTTP_201_CREATED)
@@ -168,15 +173,39 @@ def create_dependency(
     require_task_access(db, task_id, current_user.id)
     require_task_access(db, dependency_in.depends_on_id, current_user.id)
     try:
-        dependency = add_dependency(db, task_id, dependency_in.depends_on_id)
+        dependency = add_dependency(
+            db,
+            task_id,
+            dependency_in.depends_on_id,
+            dependency_type=dependency_in.dependency_type,
+            lag_days=dependency_in.lag_days,
+            hardness=dependency_in.hardness,
+        )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
-    return TaskDependencyOut(
-        id=dependency.id,
-        depends_on_id=dependency.depends_on_id,
-        depends_on_title=dependency.depends_on.title,
-        depends_on_completed=dependency.depends_on.is_completed,
+    return _dependency_out(dependency)
+
+
+@router.put("/{task_id}/dependencies/{dependency_id}", response_model=TaskDependencyOut)
+def update_dependency_route(
+    task_id: int,
+    dependency_id: int,
+    dependency_in: TaskDependencyUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    require_task_access(db, task_id, current_user.id)
+    dependency = get_dependency(db, dependency_id)
+    if not dependency or dependency.task_id != task_id:
+        raise HTTPException(status_code=404, detail="Dependência não encontrada")
+    dependency = update_dependency(
+        db,
+        dependency,
+        dependency_type=dependency_in.dependency_type,
+        lag_days=dependency_in.lag_days,
+        hardness=dependency_in.hardness,
     )
+    return _dependency_out(dependency)
 
 
 @router.delete("/{task_id}/dependencies/{dependency_id}", status_code=status.HTTP_204_NO_CONTENT)

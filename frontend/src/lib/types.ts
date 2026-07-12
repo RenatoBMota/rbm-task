@@ -16,6 +16,8 @@ export interface Task {
   priority: TaskPriority;
   status: TaskStatus;
   due_date: string | null;
+  start_date: string | null;
+  is_milestone: boolean;
   estimated_minutes: number | null;
   is_completed: boolean;
   completed_at: string | null;
@@ -30,6 +32,24 @@ export interface Task {
   updated_at: string;
   subtask_count: number;
   labels: Label[];
+}
+
+export type DependencyType = "finish_start" | "start_start" | "finish_finish" | "start_finish";
+export type DependencyHardness = "strong" | "rubber";
+
+export interface GanttDependency {
+  id: number;
+  task_id: number;
+  depends_on_id: number;
+  dependency_type: DependencyType;
+  lag_days: number;
+  hardness: DependencyHardness;
+}
+
+export interface GanttData {
+  tasks: Task[];
+  dependencies: GanttDependency[];
+  critical_task_ids: number[];
 }
 
 export interface Project {
@@ -120,4 +140,18 @@ export const PRIORITY_COLORS: Record<TaskPriority, string> = {
   P2: "bg-orange-100 text-orange-700 border-orange-200",
   P3: "bg-blue-100 text-blue-700 border-blue-200",
   P4: "bg-slate-100 text-slate-600 border-slate-200",
+};
+
+export const DEPENDENCY_TYPE_LABELS: Record<DependencyType, string> = {
+  finish_start: "Término → Início",
+  start_start: "Início → Início",
+  finish_finish: "Término → Término",
+  start_finish: "Início → Término",
+};
+
+export const DEPENDENCY_TYPE_SHORT: Record<DependencyType, string> = {
+  finish_start: "FS",
+  start_start: "SS",
+  finish_finish: "FF",
+  start_finish: "SF",
 };

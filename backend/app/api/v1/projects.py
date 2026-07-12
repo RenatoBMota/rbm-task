@@ -5,9 +5,13 @@ from app.api.deps import get_current_user
 from app.crud.project import (
     get_project, get_projects, create_project, update_project, delete_project, duplicate_project,
 )
+from app.crud.task import get_all_project_tasks
 from app.crud.workspace import get_member
+from app.core.critical_path import compute_critical_path
 from app.models.user import User
+from app.models.task_dependency import TaskDependency
 from app.schemas.project import ProjectCreate, ProjectUpdate, ProjectOut, ProjectDuplicate
+from app.schemas.gantt import GanttData, GanttDependency
 
 router = APIRouter(prefix="/projects", tags=["projects"])
 
@@ -91,3 +95,27 @@ def delete(
 ):
     project = _get_project_with_access(db, project_id, current_user.id)
     delete_project(db, project)
+
+
+@router.get("/{project_id}/gantt", response_model=GanttData)
+def get_gantt(
+    project_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    _get_project_with_access(db, project_id, current_user.id)
+    tasks = get_all_project_tasks(db, project_id)
+    task_ids = [t.id for t in tasks]
+    dependencies = (
+        db.query(TaskDependency)
+        .filter(TaskDependency.task_id.in_(task_ids), TaskDependency.depends_on_id.in_(task_ids))
+        .all()
+        if task_ids
+        else []
+    )
+    critical_ids = compute_critical_path(tasks, dependencies)
+    return GanttData(
+        tasks=tasks,
+        dependencies=[GanttDependency.model_validate(d) for d in dependencies],
+        critical_task_ids=sorted(critical_ids),
+    )

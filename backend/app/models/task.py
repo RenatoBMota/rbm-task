@@ -40,6 +40,8 @@ class Task(Base):
         Enum(TaskStatus), default=TaskStatus.TODO
     )
     due_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    start_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    is_milestone: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     estimated_minutes: Mapped[int | None] = mapped_column(Integer, nullable=True)
     is_completed: Mapped[bool] = mapped_column(Boolean, default=False)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

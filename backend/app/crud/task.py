@@ -116,6 +116,15 @@ def get_board_tasks(db: Session, project_id: int) -> list[Task]:
     )
 
 
+def get_all_project_tasks(db: Session, project_id: int) -> list[Task]:
+    return (
+        db.query(Task)
+        .filter(Task.project_id == project_id, Task.is_archived == False)
+        .order_by(Task.position)
+        .all()
+    )
+
+
 def get_overdue_tasks(db: Session, user_id: int, workspace_id: int | None = None) -> list[Task]:
     now = datetime.now(timezone.utc)
     query = db.query(Task).filter(

@@ -60,6 +60,8 @@ interface TaskUpdatePayload {
   priority?: TaskPriority;
   status?: TaskStatus;
   due_date?: string | null;
+  start_date?: string | null;
+  is_milestone?: boolean;
   recurrence?: TaskRecurrence;
   location?: string | null;
   assignee_id?: number | null;
@@ -561,7 +563,7 @@ export function TaskDetailModal({ taskId, onClose }: { taskId: number; onClose: 
                   </button>
                 </div>
                 <div className="border-t border-surface-100 pt-2">
-                  <label className="block text-xs text-slate-400 mb-1">Data e hora personalizada</label>
+                  <label className="block text-xs text-slate-400 mb-1">Data e hora personalizada (fim)</label>
                   <input
                     type="datetime-local"
                     className="input text-sm py-1"
@@ -570,6 +572,27 @@ export function TaskDetailModal({ taskId, onClose }: { taskId: number; onClose: 
                       updateTask.mutate({ due_date: e.target.value ? new Date(e.target.value).toISOString() : null })
                     }
                   />
+                </div>
+                <div className="border-t border-surface-100 pt-2">
+                  <label className="block text-xs text-slate-400 mb-1">Data de início (Gantt)</label>
+                  <input
+                    type="datetime-local"
+                    className="input text-sm py-1"
+                    defaultValue={task?.start_date ? toLocalInputValue(new Date(task.start_date)) : ""}
+                    onBlur={(e) =>
+                      updateTask.mutate({ start_date: e.target.value ? new Date(e.target.value).toISOString() : null })
+                    }
+                  />
+                </div>
+                <div className="border-t border-surface-100 pt-2">
+                  <label className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={task?.is_milestone ?? false}
+                      onChange={(e) => updateTask.mutate({ is_milestone: e.target.checked })}
+                    />
+                    É um marco (milestone)
+                  </label>
                 </div>
                 <div className="border-t border-surface-100 pt-2">
                   <label className="text-xs text-slate-400 mb-1 flex items-center gap-1">
