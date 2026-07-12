@@ -46,7 +46,7 @@ export function WorkspaceSwitcher() {
       {open && (
         <>
           <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
-          <div className="absolute left-3 right-3 mt-1 bg-white rounded-lg shadow-xl border border-surface-200 z-20 py-1 max-h-80 overflow-y-auto">
+          <div className="absolute left-3 right-3 mt-1 bg-white dark:bg-surface-900 rounded-lg shadow-xl border border-surface-200 dark:border-slate-700 z-20 py-1 max-h-80 overflow-y-auto">
             {workspaces.map((w) => (
               <div key={w.id} className="flex items-center group">
                 <button
@@ -54,8 +54,8 @@ export function WorkspaceSwitcher() {
                     setCurrentWorkspaceId(w.id);
                     setOpen(false);
                   }}
-                  className={`flex-1 flex items-center gap-2 px-3 py-2 text-sm hover:bg-surface-50 transition-colors ${
-                    w.id === currentWorkspaceId ? "text-primary-600 font-medium" : "text-slate-700"
+                  className={`flex-1 flex items-center gap-2 px-3 py-2 text-sm hover:bg-surface-50 hover:dark:bg-surface-800 transition-colors ${
+                    w.id === currentWorkspaceId ? "text-primary-600 font-medium" : "text-slate-700 dark:text-slate-300"
                   }`}
                 >
                   <div
@@ -70,14 +70,14 @@ export function WorkspaceSwitcher() {
                     setCurrentWorkspaceId(w.id);
                     setOpen(false);
                   }}
-                  className="p-2 text-slate-300 hover:text-slate-600 opacity-0 group-hover:opacity-100"
+                  className="p-2 text-slate-300 hover:text-slate-600 hover:dark:text-slate-400 opacity-0 group-hover:opacity-100"
                 >
                   <Settings size={14} />
                 </Link>
               </div>
             ))}
 
-            <div className="border-t border-surface-100 mt-1 pt-1 px-2">
+            <div className="border-t border-surface-100 dark:border-slate-800 mt-1 pt-1 px-2">
               {creating ? (
                 <div className="flex gap-1 p-1">
                   <input
@@ -101,7 +101,7 @@ export function WorkspaceSwitcher() {
               ) : (
                 <button
                   onClick={() => setCreating(true)}
-                  className="w-full flex items-center gap-2 px-2 py-2 text-sm text-slate-500 hover:text-slate-800 rounded-md hover:bg-surface-50"
+                  className="w-full flex items-center gap-2 px-2 py-2 text-sm text-slate-500 hover:text-slate-800 hover:dark:text-slate-100 rounded-md hover:bg-surface-50 hover:dark:bg-surface-800"
                 >
                   <Plus size={14} /> Nova área de trabalho
                 </button>

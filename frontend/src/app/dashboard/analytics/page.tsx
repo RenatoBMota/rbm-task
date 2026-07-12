@@ -136,7 +136,7 @@ export default function AnalyticsPage() {
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-slate-900">Analytics</h1>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Analytics</h1>
         <div className="flex items-center gap-3">
           <select
             className="input w-56"
@@ -172,8 +172,8 @@ export default function AnalyticsPage() {
         <div className="card p-5 mb-8">
           <p className="text-sm text-slate-500 mb-2">Cumprimento de SLA</p>
           <div className="flex items-center gap-4">
-            <span className="text-3xl font-bold text-slate-900">{sla.compliance_pct}%</span>
-            <div className="flex-1 h-2 bg-surface-100 rounded-full overflow-hidden">
+            <span className="text-3xl font-bold text-slate-900 dark:text-white">{sla.compliance_pct}%</span>
+            <div className="flex-1 h-2 bg-surface-100 dark:bg-surface-800 rounded-full overflow-hidden">
               <div
                 className="h-full bg-primary-600 rounded-full"
                 style={{ width: `${sla.compliance_pct}%` }}
@@ -185,7 +185,7 @@ export default function AnalyticsPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="card p-6">
-          <h2 className="font-semibold text-slate-900 mb-4">Tarefas concluídas (últimos 30 dias)</h2>
+          <h2 className="font-semibold text-slate-900 dark:text-white mb-4">Tarefas concluídas (últimos 30 dias)</h2>
           <ResponsiveContainer width="100%" height={260}>
             <BarChart data={trend}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
@@ -203,7 +203,7 @@ export default function AnalyticsPage() {
         </div>
 
         <div className="card p-6">
-          <h2 className="font-semibold text-slate-900 mb-4">Tarefas por status</h2>
+          <h2 className="font-semibold text-slate-900 dark:text-white mb-4">Tarefas por status</h2>
           <ResponsiveContainer width="100%" height={260}>
             <BarChart data={statusData} layout="vertical" margin={{ left: 16 }}>
               <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e2e8f0" />
@@ -218,7 +218,7 @@ export default function AnalyticsPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
         <div className="card p-6">
-          <h2 className="font-semibold text-slate-900 mb-4">Carga da equipe</h2>
+          <h2 className="font-semibold text-slate-900 dark:text-white mb-4">Carga da equipe</h2>
           {workload.length === 0 ? (
             <p className="text-sm text-slate-400">Nenhum membro com tarefas nesta área de trabalho.</p>
           ) : (
@@ -226,7 +226,7 @@ export default function AnalyticsPage() {
               {workload.map((m) => (
                 <div key={m.user_id}>
                   <div className="flex items-center justify-between text-sm mb-1">
-                    <span className="font-medium text-slate-700 flex items-center gap-1.5">
+                    <span className="font-medium text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
                       {m.full_name}
                       {m.is_overloaded && <AlertTriangle size={13} className="text-red-500" />}
                     </span>
@@ -234,7 +234,7 @@ export default function AnalyticsPage() {
                       {m.active_task_count} tarefa{m.active_task_count === 1 ? "" : "s"}
                     </span>
                   </div>
-                  <div className="h-2 bg-surface-100 rounded-full overflow-hidden">
+                  <div className="h-2 bg-surface-100 dark:bg-surface-800 rounded-full overflow-hidden">
                     <div
                       className={clsx("h-full rounded-full", m.is_overloaded ? "bg-red-500" : "bg-primary-600")}
                       style={{ width: `${Math.min((m.weighted_load / OVERLOAD_THRESHOLD) * 100, 100)}%` }}
@@ -247,7 +247,7 @@ export default function AnalyticsPage() {
         </div>
 
         <div className="card p-6">
-          <h2 className="font-semibold text-slate-900 mb-4">Risco por projeto</h2>
+          <h2 className="font-semibold text-slate-900 dark:text-white mb-4">Risco por projeto</h2>
           {projectRisks.length === 0 ? (
             <p className="text-sm text-slate-400">Nenhum projeto nesta área de trabalho.</p>
           ) : (
@@ -255,9 +255,9 @@ export default function AnalyticsPage() {
               {projectRisks.map((r) => (
                 <div
                   key={r.project_id}
-                  className="flex items-center gap-3 py-2 border-b border-surface-100 last:border-0"
+                  className="flex items-center gap-3 py-2 border-b border-surface-100 dark:border-slate-800 last:border-0"
                 >
-                  <span className="flex-1 text-sm text-slate-700 truncate">{r.project_name}</span>
+                  <span className="flex-1 text-sm text-slate-700 dark:text-slate-300 truncate">{r.project_name}</span>
                   <span className="text-xs text-slate-400">{r.total_tasks} tarefas</span>
                   <span
                     className={clsx(
@@ -293,7 +293,7 @@ function StatTile({
   };
   return (
     <div className="card p-5">
-      <p className={`text-2xl font-bold ${tone ? toneClasses[tone].split(" ")[0] : "text-slate-900"}`}>
+      <p className={`text-2xl font-bold ${tone ? toneClasses[tone].split(" ")[0] : "text-slate-900 dark:text-white"}`}>
         {value}
       </p>
       <p className="text-sm text-slate-500 mt-0.5">{label}</p>

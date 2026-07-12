@@ -136,17 +136,17 @@ export default function GanttPage() {
   return (
     <div>
       <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
-        <h1 className="text-2xl font-bold text-slate-900">Gantt</h1>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Gantt</h1>
         <div className="flex items-center gap-2">
-          <div className="flex rounded-lg border border-surface-200 overflow-hidden text-sm">
+          <div className="flex rounded-lg border border-surface-200 dark:border-slate-700 overflow-hidden text-sm">
             <button
-              className={clsx("px-3 py-1.5", view === "gantt" ? "bg-primary-600 text-white" : "text-slate-500 hover:bg-surface-50")}
+              className={clsx("px-3 py-1.5", view === "gantt" ? "bg-primary-600 text-white" : "text-slate-500 hover:bg-surface-50 hover:dark:bg-surface-800")}
               onClick={() => setView("gantt")}
             >
               Gantt
             </button>
             <button
-              className={clsx("px-3 py-1.5", view === "pert" ? "bg-primary-600 text-white" : "text-slate-500 hover:bg-surface-50")}
+              className={clsx("px-3 py-1.5", view === "pert" ? "bg-primary-600 text-white" : "text-slate-500 hover:bg-surface-50 hover:dark:bg-surface-800")}
               onClick={() => setView("pert")}
             >
               PERT

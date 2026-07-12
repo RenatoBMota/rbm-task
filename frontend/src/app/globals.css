@@ -6,10 +6,16 @@
 
 @layer base {
   * {
-    @apply border-surface-200;
+    @apply border-surface-200 dark:border-slate-800;
   }
   body {
-    @apply bg-surface-50 text-slate-900 font-sans antialiased;
+    @apply bg-surface-100 text-slate-900 font-sans antialiased dark:bg-surface-950 dark:text-slate-100;
+  }
+  ::-webkit-scrollbar {
+    @apply w-1.5 h-1.5;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-slate-300 dark:bg-slate-700 rounded-full;
   }
 }
 
@@ -18,12 +24,41 @@
     @apply bg-primary-600 hover:bg-primary-700 text-white font-medium px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed;
   }
   .btn-secondary {
-    @apply bg-white hover:bg-surface-100 text-slate-700 font-medium px-4 py-2 rounded-lg border border-surface-200 transition-colors;
+    @apply bg-white hover:bg-surface-100 text-slate-700 font-medium px-4 py-2 rounded-lg border border-surface-200 transition-colors dark:bg-surface-900 dark:hover:bg-surface-800 dark:text-slate-200 dark:border-slate-700;
   }
   .input {
-    @apply w-full px-3 py-2 border border-surface-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent;
+    @apply w-full px-3 py-2 border border-surface-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:bg-surface-900 dark:border-slate-700 dark:text-slate-100 dark:placeholder:text-slate-500;
   }
   .card {
-    @apply bg-white rounded-xl border border-surface-200 shadow-sm;
+    @apply bg-white rounded-xl border border-surface-200 shadow-sm dark:bg-surface-900 dark:border-slate-800;
+  }
+
+  /* Dense corporate-dashboard primitives */
+  .stat-tile {
+    @apply card flex flex-col gap-1.5 px-4 py-3.5;
+  }
+  .stat-tile-label {
+    @apply text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400 flex items-center gap-1.5;
+  }
+  .stat-value {
+    @apply text-2xl font-bold text-slate-900 dark:text-white tabular-nums leading-none;
+  }
+  .stat-delta-up {
+    @apply text-status-good;
+  }
+  .stat-delta-down {
+    @apply text-status-critical;
+  }
+  .panel-header {
+    @apply flex items-center justify-between px-4 py-3 border-b border-surface-100 dark:border-slate-800;
+  }
+  .table-dense {
+    @apply w-full text-sm;
+  }
+  .table-dense th {
+    @apply text-left text-[11px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500 px-3 py-2 border-b border-surface-100 dark:border-slate-800;
+  }
+  .table-dense td {
+    @apply px-3 py-2 border-b border-surface-50 dark:border-slate-800/60 text-slate-700 dark:text-slate-300;
   }
 }

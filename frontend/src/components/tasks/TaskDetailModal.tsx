@@ -311,15 +311,15 @@ export function TaskDetailModal({ taskId, onClose }: { taskId: number; onClose: 
   };
 
   const menuItemClass =
-    "w-full flex items-center gap-2 px-3 py-2 text-sm rounded-md hover:bg-surface-50 text-slate-700 text-left";
+    "w-full flex items-center gap-2 px-3 py-2 text-sm rounded-md hover:bg-surface-50 hover:dark:bg-surface-800 text-slate-700 dark:text-slate-300 text-left";
 
   return (
     <div className="fixed inset-0 bg-black/40 z-50 flex justify-end" onClick={onClose}>
       <div
-        className="bg-white w-full max-w-xl h-full overflow-y-auto shadow-xl"
+        className="bg-white dark:bg-surface-900 w-full max-w-xl h-full overflow-y-auto shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="sticky top-0 z-30 bg-white border-b border-surface-200 px-6 py-4">
+        <div className="sticky top-0 z-30 bg-white dark:bg-surface-900 border-b border-surface-200 dark:border-slate-700 px-6 py-4">
           <div className="flex items-start justify-between gap-2">
             <div className="flex-1 min-w-0">
               {task && (
@@ -341,7 +341,7 @@ export function TaskDetailModal({ taskId, onClose }: { taskId: number; onClose: 
                 />
               ) : (
                 <h2
-                  className="font-semibold text-lg text-slate-900 mt-1 cursor-text hover:bg-surface-50 rounded px-1 -mx-1"
+                  className="font-semibold text-lg text-slate-900 dark:text-white mt-1 cursor-text hover:bg-surface-50 hover:dark:bg-surface-800 rounded px-1 -mx-1"
                   onClick={() => {
                     setTitleDraft(task?.title ?? "");
                     setEditingTitle(true);
@@ -355,12 +355,12 @@ export function TaskDetailModal({ taskId, onClose }: { taskId: number; onClose: 
               <div className="relative" ref={menuRef}>
                 <button
                   onClick={() => setMenuOpen((v) => !v)}
-                  className="text-slate-400 hover:text-slate-700 p-1.5 rounded hover:bg-surface-50"
+                  className="text-slate-400 hover:text-slate-700 hover:dark:text-slate-300 p-1.5 rounded hover:bg-surface-50 hover:dark:bg-surface-800"
                 >
                   <MoreHorizontal size={18} />
                 </button>
                 {menuOpen && (
-                  <div className="absolute right-0 z-20 mt-1 w-56 bg-white border border-surface-200 rounded-lg shadow-lg p-1">
+                  <div className="absolute right-0 z-20 mt-1 w-56 bg-white dark:bg-surface-900 border border-surface-200 dark:border-slate-700 rounded-lg shadow-lg p-1">
                     {menuView === "main" ? (
                       <>
                         <button
@@ -395,7 +395,7 @@ export function TaskDetailModal({ taskId, onClose }: { taskId: number; onClose: 
                         <button className={menuItemClass} onClick={handleShare}>
                           <Share2 size={14} /> Compartilhar link
                         </button>
-                        <div className="border-t border-surface-100 my-1" />
+                        <div className="border-t border-surface-100 dark:border-slate-800 my-1" />
                         <button
                           className={clsx(menuItemClass, "text-red-600 hover:bg-red-50")}
                           onClick={() => setMenuView("delete")}
@@ -441,7 +441,7 @@ export function TaskDetailModal({ taskId, onClose }: { taskId: number; onClose: 
                       </div>
                     ) : (
                       <div className="p-3 space-y-3">
-                        <p className="text-sm text-slate-700">Excluir esta tarefa permanentemente?</p>
+                        <p className="text-sm text-slate-700 dark:text-slate-300">Excluir esta tarefa permanentemente?</p>
                         {deleteError && (
                           <p className="text-xs text-red-600 bg-red-50 px-2 py-1.5 rounded">{deleteError}</p>
                         )}
@@ -471,7 +471,7 @@ export function TaskDetailModal({ taskId, onClose }: { taskId: number; onClose: 
                   </div>
                 )}
               </div>
-              <button onClick={onClose} className="text-slate-400 hover:text-slate-700 p-1.5">
+              <button onClick={onClose} className="text-slate-400 hover:text-slate-700 hover:dark:text-slate-300 p-1.5">
                 <X size={20} />
               </button>
             </div>
@@ -489,10 +489,10 @@ export function TaskDetailModal({ taskId, onClose }: { taskId: number; onClose: 
                 onClick={() => toggleProp("members")}
               />
               {openProp === "members" && (
-                <div className="absolute z-20 mt-1 w-56 bg-white border border-surface-200 rounded-lg shadow-lg p-1 max-h-64 overflow-y-auto">
+                <div className="absolute z-20 mt-1 w-56 bg-white dark:bg-surface-900 border border-surface-200 dark:border-slate-700 rounded-lg shadow-lg p-1 max-h-64 overflow-y-auto">
                   {task.assignee_id && (
                     <button
-                      className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-md hover:bg-surface-50 text-red-500 text-left"
+                      className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-md hover:bg-surface-50 hover:dark:bg-surface-800 text-red-500 text-left"
                       onClick={() => {
                         updateTask.mutate({ assignee_id: null });
                         setOpenProp(null);
@@ -504,7 +504,7 @@ export function TaskDetailModal({ taskId, onClose }: { taskId: number; onClose: 
                   {members.map((m) => (
                     <button
                       key={m.id}
-                      className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-md hover:bg-surface-50"
+                      className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-md hover:bg-surface-50 hover:dark:bg-surface-800"
                       onClick={() => {
                         updateTask.mutate({ assignee_id: m.user_id });
                         setOpenProp(null);
@@ -533,14 +533,14 @@ export function TaskDetailModal({ taskId, onClose }: { taskId: number; onClose: 
               onClick={() => toggleProp("labels")}
             />
             {openProp === "labels" && (
-              <div className="absolute z-20 mt-1 w-56 bg-white border border-surface-200 rounded-lg shadow-lg p-2 space-y-1 max-h-64 overflow-y-auto">
+              <div className="absolute z-20 mt-1 w-56 bg-white dark:bg-surface-900 border border-surface-200 dark:border-slate-700 rounded-lg shadow-lg p-2 space-y-1 max-h-64 overflow-y-auto">
                 {labels.length === 0 && <p className="text-xs text-slate-400 px-2 py-1">Nenhuma etiqueta ainda.</p>}
                 {labels.map((l) => {
                   const checked = task?.labels.some((tl) => tl.id === l.id) ?? false;
                   return (
                     <label
                       key={l.id}
-                      className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-surface-50 text-sm cursor-pointer"
+                      className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-surface-50 hover:dark:bg-surface-800 text-sm cursor-pointer"
                     >
                       <input
                         type="checkbox"
@@ -552,7 +552,7 @@ export function TaskDetailModal({ taskId, onClose }: { taskId: number; onClose: 
                     </label>
                   );
                 })}
-                <div className="border-t border-surface-100 pt-2 mt-1 flex gap-1">
+                <div className="border-t border-surface-100 dark:border-slate-800 pt-2 mt-1 flex gap-1">
                   <input
                     className="input text-sm flex-1 py-1"
                     placeholder="Nova etiqueta"
@@ -602,10 +602,10 @@ export function TaskDetailModal({ taskId, onClose }: { taskId: number; onClose: 
               onClick={() => toggleProp("date")}
             />
             {openProp === "date" && (
-              <div className="absolute z-20 mt-1 w-64 bg-white border border-surface-200 rounded-lg shadow-lg p-3 space-y-2">
+              <div className="absolute z-20 mt-1 w-64 bg-white dark:bg-surface-900 border border-surface-200 dark:border-slate-700 rounded-lg shadow-lg p-3 space-y-2">
                 <div className="grid grid-cols-1 gap-0.5">
                   <button
-                    className="text-left text-sm px-2 py-1.5 rounded hover:bg-surface-50 flex items-center gap-2"
+                    className="text-left text-sm px-2 py-1.5 rounded hover:bg-surface-50 hover:dark:bg-surface-800 flex items-center gap-2"
                     onClick={() => {
                       updateTask.mutate({ due_date: startOfDay(new Date()).toISOString() });
                       setOpenProp(null);
@@ -614,7 +614,7 @@ export function TaskDetailModal({ taskId, onClose }: { taskId: number; onClose: 
                     <Calendar size={14} className="text-green-600" /> Hoje
                   </button>
                   <button
-                    className="text-left text-sm px-2 py-1.5 rounded hover:bg-surface-50 flex items-center gap-2"
+                    className="text-left text-sm px-2 py-1.5 rounded hover:bg-surface-50 hover:dark:bg-surface-800 flex items-center gap-2"
                     onClick={() => {
                       updateTask.mutate({ due_date: startOfDay(addDays(new Date(), 1)).toISOString() });
                       setOpenProp(null);
@@ -623,7 +623,7 @@ export function TaskDetailModal({ taskId, onClose }: { taskId: number; onClose: 
                     <Calendar size={14} className="text-orange-500" /> Amanhã
                   </button>
                   <button
-                    className="text-left text-sm px-2 py-1.5 rounded hover:bg-surface-50 flex items-center gap-2"
+                    className="text-left text-sm px-2 py-1.5 rounded hover:bg-surface-50 hover:dark:bg-surface-800 flex items-center gap-2"
                     onClick={() => {
                       updateTask.mutate({ due_date: startOfDay(addDays(new Date(), 7)).toISOString() });
                       setOpenProp(null);
@@ -632,7 +632,7 @@ export function TaskDetailModal({ taskId, onClose }: { taskId: number; onClose: 
                     <Calendar size={14} className="text-blue-500" /> Próxima semana
                   </button>
                 </div>
-                <div className="border-t border-surface-100 pt-2">
+                <div className="border-t border-surface-100 dark:border-slate-800 pt-2">
                   <label className="block text-xs text-slate-400 mb-1">Data e hora personalizada (fim)</label>
                   <input
                     type="datetime-local"
@@ -643,7 +643,7 @@ export function TaskDetailModal({ taskId, onClose }: { taskId: number; onClose: 
                     }
                   />
                 </div>
-                <div className="border-t border-surface-100 pt-2">
+                <div className="border-t border-surface-100 dark:border-slate-800 pt-2">
                   <label className="block text-xs text-slate-400 mb-1">Data de início (Gantt)</label>
                   <input
                     type="datetime-local"
@@ -654,8 +654,8 @@ export function TaskDetailModal({ taskId, onClose }: { taskId: number; onClose: 
                     }
                   />
                 </div>
-                <div className="border-t border-surface-100 pt-2">
-                  <label className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer">
+                <div className="border-t border-surface-100 dark:border-slate-800 pt-2">
+                  <label className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400 cursor-pointer">
                     <input
                       type="checkbox"
                       checked={task?.is_milestone ?? false}
@@ -664,7 +664,7 @@ export function TaskDetailModal({ taskId, onClose }: { taskId: number; onClose: 
                     É um marco (milestone)
                   </label>
                 </div>
-                <div className="border-t border-surface-100 pt-2">
+                <div className="border-t border-surface-100 dark:border-slate-800 pt-2">
                   <label className="text-xs text-slate-400 mb-1 flex items-center gap-1">
                     <Repeat size={12} /> Repetir
                   </label>
@@ -710,11 +710,11 @@ export function TaskDetailModal({ taskId, onClose }: { taskId: number; onClose: 
               onClick={() => toggleProp("priority")}
             />
             {openProp === "priority" && (
-              <div className="absolute z-20 mt-1 w-52 bg-white border border-surface-200 rounded-lg shadow-lg p-1">
+              <div className="absolute z-20 mt-1 w-52 bg-white dark:bg-surface-900 border border-surface-200 dark:border-slate-700 rounded-lg shadow-lg p-1">
                 {PRIORITY_OPTIONS.map((opt) => (
                   <button
                     key={opt.value}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-md hover:bg-surface-50"
+                    className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-md hover:bg-surface-50 hover:dark:bg-surface-800"
                     onClick={() => {
                       updateTask.mutate({ priority: opt.value });
                       setOpenProp(null);
@@ -737,7 +737,7 @@ export function TaskDetailModal({ taskId, onClose }: { taskId: number; onClose: 
               onClick={() => toggleProp("location")}
             />
             {openProp === "location" && (
-              <div className="absolute z-20 mt-1 w-56 bg-white border border-surface-200 rounded-lg shadow-lg p-3">
+              <div className="absolute z-20 mt-1 w-56 bg-white dark:bg-surface-900 border border-surface-200 dark:border-slate-700 rounded-lg shadow-lg p-3">
                 <input
                   autoFocus
                   className="input text-sm py-1"
@@ -761,7 +761,7 @@ export function TaskDetailModal({ taskId, onClose }: { taskId: number; onClose: 
             <p className="text-xs text-red-600 bg-red-50 px-3 py-2 rounded-lg -mt-2">{updateError}</p>
           )}
           <section>
-            <h3 className="text-sm font-semibold text-slate-700 mb-2">Descrição</h3>
+            <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Descrição</h3>
             {editingDescription ? (
               <div className="space-y-2">
                 <textarea
@@ -789,8 +789,8 @@ export function TaskDetailModal({ taskId, onClose }: { taskId: number; onClose: 
             ) : (
               <p
                 className={clsx(
-                  "text-sm rounded px-2 py-1.5 -mx-2 cursor-text hover:bg-surface-50",
-                  task?.description ? "text-slate-600" : "text-slate-400"
+                  "text-sm rounded px-2 py-1.5 -mx-2 cursor-text hover:bg-surface-50 hover:dark:bg-surface-800",
+                  task?.description ? "text-slate-600 dark:text-slate-400" : "text-slate-400"
                 )}
                 onClick={() => {
                   setDescDraft(task?.description ?? "");
@@ -803,7 +803,7 @@ export function TaskDetailModal({ taskId, onClose }: { taskId: number; onClose: 
           </section>
 
           <section>
-            <h3 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
+            <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3 flex items-center gap-2">
               <Users2 size={14} /> Recursos {taskResources.length > 0 && `(${taskResources.length})`}
               {totalResourceCost > 0 && (
                 <span className="text-xs font-normal text-slate-400 flex items-center gap-1 ml-auto">
@@ -861,7 +861,7 @@ export function TaskDetailModal({ taskId, onClose }: { taskId: number; onClose: 
           </section>
 
           <section>
-            <h3 className="text-sm font-semibold text-slate-700 mb-3">
+            <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">
               Checklist {checklist.length > 0 && `(${completedCount}/${checklist.length})`}
             </h3>
             <div className="space-y-1.5">
@@ -909,7 +909,7 @@ export function TaskDetailModal({ taskId, onClose }: { taskId: number; onClose: 
 
           {subtasks.length > 0 && (
             <section>
-              <h3 className="text-sm font-semibold text-slate-700 mb-3">Subtarefas ({subtasks.length})</h3>
+              <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">Subtarefas ({subtasks.length})</h3>
               <div className="space-y-1.5">
                 {subtasks.map((s) => (
                   <div key={s.id} className="flex items-center gap-2 text-sm">
@@ -926,7 +926,7 @@ export function TaskDetailModal({ taskId, onClose }: { taskId: number; onClose: 
           )}
 
           <section>
-            <h3 className="text-sm font-semibold text-slate-700 mb-3">Anexos ({attachments.length})</h3>
+            <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">Anexos ({attachments.length})</h3>
             <div className="space-y-1.5">
               {attachments.map((a) => (
                 <div key={a.id} className="flex items-center gap-2 text-sm group">
@@ -964,11 +964,11 @@ export function TaskDetailModal({ taskId, onClose }: { taskId: number; onClose: 
           </section>
 
           <section>
-            <h3 className="text-sm font-semibold text-slate-700 mb-3">Comentários ({comments.length})</h3>
+            <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">Comentários ({comments.length})</h3>
             <div className="space-y-3">
               {comments.map((c) => (
-                <div key={c.id} className="bg-surface-50 rounded-lg p-3 text-sm">
-                  <p className="text-slate-700 whitespace-pre-wrap">{c.content}</p>
+                <div key={c.id} className="bg-surface-50 dark:bg-surface-800 rounded-lg p-3 text-sm">
+                  <p className="text-slate-700 dark:text-slate-300 whitespace-pre-wrap">{c.content}</p>
                   <p className="text-xs text-slate-400 mt-1">
                     {new Date(c.created_at).toLocaleString("pt-BR")}
                   </p>

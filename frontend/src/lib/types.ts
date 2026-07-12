@@ -97,6 +97,58 @@ export interface GanttBaseline extends GanttBaselineSummary {
   tasks: GanttBaselineTaskData[];
 }
 
+export interface StatusBreakdownItem {
+  status: TaskStatus;
+  count: number;
+}
+
+export interface ExecutiveReportTeamMember {
+  user_id: number;
+  full_name: string;
+  active_task_count: number;
+  completed_task_count: number;
+}
+
+export interface ExecutiveReport {
+  project_id: number;
+  project_name: string;
+  start_date: string;
+  end_date: string;
+  generated_at: string;
+  total_tasks: number;
+  completed_tasks: number;
+  progress_percent: number;
+  expected_progress_percent: number;
+  on_schedule: boolean;
+  overdue_tasks: number;
+  critical_task_count: number;
+  total_cost: number;
+  risk_score: number;
+  risk_level: "low" | "medium" | "high";
+  status_breakdown: StatusBreakdownItem[];
+  team: ExecutiveReportTeamMember[];
+}
+
+export type RecapPeriod = "daily" | "weekly" | "monthly";
+
+export interface RecapContributor {
+  user_id: number;
+  full_name: string;
+  completed_count: number;
+}
+
+export interface Recap {
+  period: RecapPeriod;
+  period_start: string;
+  period_end: string;
+  tasks_created: number;
+  tasks_completed: number;
+  tasks_overdue: number;
+  previous_tasks_completed: number;
+  completed_delta: number;
+  top_contributors: RecapContributor[];
+}
+
 export interface Project {
   id: number;
   name: string;
@@ -186,7 +238,7 @@ export const PRIORITY_COLORS: Record<TaskPriority, string> = {
   P1: "bg-red-100 text-red-700 border-red-200",
   P2: "bg-orange-100 text-orange-700 border-orange-200",
   P3: "bg-blue-100 text-blue-700 border-blue-200",
-  P4: "bg-slate-100 text-slate-600 border-slate-200",
+  P4: "bg-slate-100 text-slate-600 dark:text-slate-400 border-slate-200",
 };
 
 export const DEPENDENCY_TYPE_LABELS: Record<DependencyType, string> = {

@@ -32,7 +32,7 @@ export function KanbanCard({ task, onClick }: { task: Task; onClick: () => void 
           {task.priority}
         </span>
       </div>
-      <p className="text-sm text-slate-800 leading-snug">{task.title}</p>
+      <p className="text-sm text-slate-800 dark:text-slate-100 leading-snug">{task.title}</p>
       {task.due_date && (
         <p className="text-xs text-slate-400 mt-2">
           {new Date(task.due_date).toLocaleDateString("pt-BR")}

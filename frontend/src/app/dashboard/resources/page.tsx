@@ -48,7 +48,7 @@ export default function ResourcesPage() {
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-slate-900">Recursos</h1>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Recursos</h1>
         <button className="btn-primary flex items-center gap-2" onClick={() => setShowForm(true)}>
           <Plus size={18} /> Novo Recurso
         </button>
@@ -113,18 +113,18 @@ export default function ResourcesPage() {
               const pct = util?.total_allocation_percent ?? 0;
               const isOverloaded = pct > 100;
               return (
-                <div key={r.id} className="flex items-center gap-3 py-2 border-b border-surface-100 last:border-0">
+                <div key={r.id} className="flex items-center gap-3 py-2 border-b border-surface-100 dark:border-slate-800 last:border-0">
                   <div className="w-8 h-8 rounded-full bg-primary-100 text-primary-700 flex items-center justify-center text-sm font-semibold flex-shrink-0">
                     {r.name.charAt(0).toUpperCase()}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-slate-800 truncate">{r.name}</p>
+                    <p className="text-sm font-medium text-slate-800 dark:text-slate-100 truncate">{r.name}</p>
                     <p className="text-xs text-slate-400 truncate">
                       {r.role || "Sem papel"} {r.standard_rate > 0 && `· R$ ${r.standard_rate}/dia`}
                     </p>
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0 w-40">
-                    <div className="flex-1 h-1.5 bg-surface-100 rounded-full overflow-hidden">
+                    <div className="flex-1 h-1.5 bg-surface-100 dark:bg-surface-800 rounded-full overflow-hidden">
                       <div
                         className={clsx(
                           "h-full rounded-full",

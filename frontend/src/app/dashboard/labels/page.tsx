@@ -41,7 +41,7 @@ export default function LabelsPage() {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-slate-900">Etiquetas</h1>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Etiquetas</h1>
         <p className="text-slate-500 mt-1">Crie, renomeie ou exclua etiquetas usadas nas tarefas.</p>
       </div>
 
@@ -87,7 +87,7 @@ export default function LabelsPage() {
         ) : (
           <div className="space-y-2">
             {labels.map((l) => (
-              <div key={l.id} className="flex items-center gap-3 py-2 border-b border-surface-100 last:border-0">
+              <div key={l.id} className="flex items-center gap-3 py-2 border-b border-surface-100 dark:border-slate-800 last:border-0">
                 <div className="flex gap-1.5 flex-shrink-0">
                   {LABEL_COLORS.map((c) => (
                     <button
@@ -116,7 +116,7 @@ export default function LabelsPage() {
                   />
                 ) : (
                   <span
-                    className="flex-1 text-sm text-slate-700 cursor-text hover:bg-surface-50 rounded px-1 -mx-1"
+                    className="flex-1 text-sm text-slate-700 dark:text-slate-300 cursor-text hover:bg-surface-50 hover:dark:bg-surface-800 rounded px-1 -mx-1"
                     onClick={() => startEdit(l.id, l.name)}
                   >
                     {l.name}

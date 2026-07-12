@@ -48,12 +48,12 @@ export default function CalendarPage() {
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-slate-900">Calendário</h1>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Calendário</h1>
         <div className="flex items-center gap-3">
           <button className="btn-secondary p-2" onClick={() => setCursor((d) => subMonths(d, 1))}>
             <ChevronLeft size={16} />
           </button>
-          <span className="font-medium text-slate-700 w-36 text-center capitalize">
+          <span className="font-medium text-slate-700 dark:text-slate-300 w-36 text-center capitalize">
             {format(cursor, "MMMM yyyy", { locale: ptBR })}
           </span>
           <button className="btn-secondary p-2" onClick={() => setCursor((d) => addMonths(d, 1))}>
@@ -63,7 +63,7 @@ export default function CalendarPage() {
       </div>
 
       <div className="card overflow-hidden">
-        <div className="grid grid-cols-7 border-b border-surface-200">
+        <div className="grid grid-cols-7 border-b border-surface-200 dark:border-slate-700">
           {WEEKDAYS.map((day) => (
             <div key={day} className="text-xs font-semibold text-slate-500 text-center py-2">
               {day}
@@ -77,8 +77,8 @@ export default function CalendarPage() {
               <div
                 key={day.toISOString()}
                 className={clsx(
-                  "min-h-[110px] border-b border-r border-surface-100 p-2",
-                  !isSameMonth(day, cursor) && "bg-surface-50"
+                  "min-h-[110px] border-b border-r border-surface-100 dark:border-slate-800 p-2",
+                  !isSameMonth(day, cursor) && "bg-surface-50 dark:bg-surface-800"
                 )}
               >
                 <span

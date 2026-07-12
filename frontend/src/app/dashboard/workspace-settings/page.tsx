@@ -51,7 +51,7 @@ export default function WorkspaceSettingsPage() {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-slate-900">Configurações da Área de Trabalho</h1>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Configurações da Área de Trabalho</h1>
         <p className="text-slate-500 mt-1">{currentWorkspace?.name}</p>
       </div>
 
@@ -93,12 +93,12 @@ export default function WorkspaceSettingsPage() {
         <h2 className="font-semibold mb-4">Membros ({members.length})</h2>
         <div className="space-y-2">
           {members.map((m) => (
-            <div key={m.id} className="flex items-center gap-3 py-2 border-b border-surface-100 last:border-0">
+            <div key={m.id} className="flex items-center gap-3 py-2 border-b border-surface-100 dark:border-slate-800 last:border-0">
               <div className="w-8 h-8 rounded-full bg-primary-100 text-primary-700 flex items-center justify-center text-sm font-semibold flex-shrink-0">
                 {m.full_name.charAt(0).toUpperCase()}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-slate-800 truncate">{m.full_name}</p>
+                <p className="text-sm font-medium text-slate-800 dark:text-slate-100 truncate">{m.full_name}</p>
                 <p className="text-xs text-slate-400 truncate">{m.email}</p>
               </div>
               {canManage && m.role !== "owner" ? (
@@ -114,7 +114,7 @@ export default function WorkspaceSettingsPage() {
                 <span
                   className={clsx(
                     "text-xs font-medium px-2 py-1 rounded-full flex items-center gap-1",
-                    m.role === "owner" ? "bg-primary-100 text-primary-700" : "bg-surface-100 text-slate-600"
+                    m.role === "owner" ? "bg-primary-100 text-primary-700" : "bg-surface-100 dark:bg-surface-800 text-slate-600 dark:text-slate-400"
                   )}
                 >
                   <Shield size={12} /> {ROLE_LABELS[m.role]}

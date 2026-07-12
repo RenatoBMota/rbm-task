@@ -108,7 +108,7 @@ export default function AutomationsPage() {
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-slate-900">Automações</h1>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Automações</h1>
         <button className="btn-primary flex items-center gap-2" onClick={() => setShowForm(true)}>
           <Plus size={18} /> Nova Automação
         </button>
@@ -159,8 +159,8 @@ export default function AutomationsPage() {
             <label className="block text-xs text-slate-500 mb-2">Ações</label>
             <div className="space-y-2">
               {actions.map((action, index) => (
-                <div key={index} className="flex items-center gap-2 bg-surface-50 rounded-lg p-2">
-                  <span className="text-xs font-medium text-slate-600 w-40 flex-shrink-0">
+                <div key={index} className="flex items-center gap-2 bg-surface-50 dark:bg-surface-800 rounded-lg p-2">
+                  <span className="text-xs font-medium text-slate-600 dark:text-slate-400 w-40 flex-shrink-0">
                     {ACTION_LABELS[action.type]}
                   </span>
                   <ActionFields action={action} onChange={(patch) => updateAction(index, patch)} />
@@ -225,7 +225,7 @@ export default function AutomationsPage() {
                 <Power size={16} />
               </button>
               <div className="flex-1 min-w-0">
-                <p className="font-medium text-slate-900 truncate">{rule.name}</p>
+                <p className="font-medium text-slate-900 dark:text-white truncate">{rule.name}</p>
                 <p className="text-xs text-slate-500 mt-0.5">
                   {TRIGGER_LABELS[rule.trigger_event]} → {rule.actions.map((a) => ACTION_LABELS[a.type]).join(", ")}
                 </p>

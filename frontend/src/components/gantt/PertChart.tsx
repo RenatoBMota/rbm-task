@@ -136,8 +136,8 @@ export function PertChart({
               key={t.id}
               onClick={() => onTaskClick(t.id)}
               className={clsx(
-                "absolute rounded-lg border-2 bg-white p-2.5 text-left shadow-sm hover:shadow-md transition-shadow",
-                isCritical ? "border-red-500" : isParent ? "border-slate-400" : "border-surface-200",
+                "absolute rounded-lg border-2 bg-white dark:bg-surface-900 p-2.5 text-left shadow-sm hover:shadow-md transition-shadow",
+                isCritical ? "border-red-500" : isParent ? "border-slate-400" : "border-surface-200 dark:border-slate-700",
                 isParent && "border-dashed"
               )}
               style={{ left: pos.x, top: pos.y, width: NODE_W, height: NODE_H }}
@@ -150,7 +150,7 @@ export function PertChart({
                 </span>
                 {isCritical && <span className="text-[9px] font-medium text-red-600">Crítico</span>}
               </div>
-              <p className={clsx("text-xs font-medium truncate", t.is_completed ? "line-through text-slate-400" : "text-slate-800")}>
+              <p className={clsx("text-xs font-medium truncate", t.is_completed ? "line-through text-slate-400" : "text-slate-800 dark:text-slate-100")}>
                 {t.title}
               </p>
               <p className="text-[10px] text-slate-400 mt-1">

@@ -28,7 +28,7 @@ export function KanbanColumn({
   return (
     <div className="flex flex-col w-72 flex-shrink-0">
       <div className="flex items-center justify-between mb-3 px-1">
-        <h3 className="text-sm font-semibold text-slate-700">{label}</h3>
+        <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300">{label}</h3>
         <span
           className={clsx(
             "text-xs font-medium px-2 py-0.5 rounded-full",
@@ -53,7 +53,7 @@ export function KanbanColumn({
       </div>
       <button
         onClick={onAddClick}
-        className="mt-2 flex items-center gap-1.5 text-xs text-slate-400 hover:text-primary-600 hover:bg-surface-50 px-2 py-1.5 rounded-md w-full transition-colors"
+        className="mt-2 flex items-center gap-1.5 text-xs text-slate-400 hover:text-primary-600 hover:bg-surface-50 hover:dark:bg-surface-800 px-2 py-1.5 rounded-md w-full transition-colors"
       >
         <Plus size={14} /> Adicionar tarefa
       </button>

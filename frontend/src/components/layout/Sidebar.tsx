@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, FolderOpen, CheckSquare, KanbanSquare, Calendar, BarChart3, Zap, LogOut, Tag, GanttChartSquare, Users2 } from "lucide-react";
+import { LayoutDashboard, FolderOpen, CheckSquare, KanbanSquare, Calendar, BarChart3, Zap, LogOut, Tag, GanttChartSquare, Users2, FileBarChart } from "lucide-react";
 import { useAuthStore } from "@/store/auth";
 import { WorkspaceSwitcher } from "@/components/workspace/WorkspaceSwitcher";
 import { clsx } from "clsx";
@@ -16,6 +16,7 @@ const navItems = [
   { href: "/dashboard/resources", label: "Recursos", icon: Users2 },
   { href: "/dashboard/calendar", label: "Calendário", icon: Calendar },
   { href: "/dashboard/analytics", label: "Analytics", icon: BarChart3 },
+  { href: "/dashboard/reports", label: "Relatórios", icon: FileBarChart },
   { href: "/dashboard/labels", label: "Etiquetas", icon: Tag },
 ];
 
@@ -29,7 +30,7 @@ export function Sidebar() {
   const items = user?.role === "admin" ? [...navItems, ...adminNavItems] : navItems;
 
   return (
-    <aside className="w-64 min-h-screen bg-surface-900 flex flex-col">
+    <aside className="hidden lg:flex w-60 min-h-screen bg-surface-950 flex-col flex-shrink-0">
       <div className="px-6 py-5 border-b border-slate-700">
         <h1 className="text-white font-bold text-lg tracking-wide">RBM TASK</h1>
         <p className="text-slate-400 text-xs mt-0.5">Enterprise</p>

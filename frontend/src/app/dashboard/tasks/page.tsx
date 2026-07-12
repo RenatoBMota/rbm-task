@@ -27,7 +27,7 @@ const priorityColors: Record<string, string> = {
   P1: "bg-red-100 text-red-700 border-red-200",
   P2: "bg-orange-100 text-orange-700 border-orange-200",
   P3: "bg-blue-100 text-blue-700 border-blue-200",
-  P4: "bg-slate-100 text-slate-600 border-slate-200",
+  P4: "bg-slate-100 text-slate-600 dark:text-slate-400 border-slate-200",
 };
 
 export default function TasksPage() {
@@ -65,7 +65,7 @@ export default function TasksPage() {
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-slate-900">Tarefas</h1>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Tarefas</h1>
         <button className="btn-primary flex items-center gap-2" onClick={() => setShowModal(true)}>
           <Plus size={18} /> Nova Tarefa
         </button>
@@ -129,7 +129,7 @@ function TaskGroup({
 }) {
   return (
     <div>
-      <h2 className={clsx("text-sm font-semibold mb-3", dimmed ? "text-slate-400" : "text-slate-700")}>
+      <h2 className={clsx("text-sm font-semibold mb-3", dimmed ? "text-slate-400" : "text-slate-700 dark:text-slate-300")}>
         {title}
       </h2>
       <div className="space-y-2">

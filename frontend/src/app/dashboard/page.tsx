@@ -6,6 +6,7 @@ import { clsx } from "clsx";
 import api from "@/lib/api";
 import { useAuthStore } from "@/store/auth";
 import { useWorkspaces } from "@/hooks/useWorkspaces";
+import { StatTile } from "@/components/ui/StatTile";
 
 interface PrioritySuggestion {
   task_id: number;
@@ -40,7 +41,7 @@ const priorityColors: Record<string, string> = {
   P1: "bg-red-100 text-red-700",
   P2: "bg-orange-100 text-orange-700",
   P3: "bg-blue-100 text-blue-700",
-  P4: "bg-slate-100 text-slate-600",
+  P4: "bg-slate-100 text-slate-600 dark:text-slate-400",
 };
 
 export default function DashboardPage() {
@@ -86,28 +87,28 @@ export default function DashboardPage() {
 
   return (
     <div>
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-slate-900">
+      <div className="mb-5">
+        <h1 className="text-xl lg:text-2xl font-bold text-slate-900 dark:text-white">
           Bom dia, {user?.full_name?.split(" ")[0]} 👋
         </h1>
-        <p className="text-slate-500 mt-1">Aqui está o resumo do seu dia</p>
+        <p className="text-slate-500 text-sm mt-0.5">Aqui está o resumo do seu dia</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-        <StatCard icon={<Clock size={20} />} label="Para hoje" value={todayTasks.length} color="blue" />
-        <StatCard icon={<AlertCircle size={20} />} label="Atrasadas" value={overdueTasks.length} color="red" />
-        <StatCard icon={<CheckCircle2 size={20} />} label="Concluídas" value={completedToday} color="green" />
-        <StatCard icon={<FolderOpen size={20} />} label="Projetos ativos" value={projects.length} color="purple" />
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
+        <StatTile label="Para hoje" value={todayTasks.length} icon={Clock} tone="neutral" />
+        <StatTile label="Atrasadas" value={overdueTasks.length} icon={AlertCircle} tone={overdueTasks.length > 0 ? "critical" : "neutral"} />
+        <StatTile label="Concluídas" value={completedToday} icon={CheckCircle2} tone="good" />
+        <StatTile label="Projetos ativos" value={projects.length} icon={FolderOpen} tone="neutral" />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
         <TaskList title="Tarefas de Hoje" tasks={todayTasks} emptyMsg="Nenhuma tarefa para hoje" />
         <TaskList title="Tarefas Atrasadas" tasks={overdueTasks} emptyMsg="Nenhuma tarefa atrasada" urgent />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="card p-6">
-          <h2 className="font-semibold text-slate-900 mb-4 flex items-center gap-2">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="card p-5">
+          <h2 className="font-semibold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
             <Sparkles size={16} className="text-primary-600" /> Sugestões de prioridade (IA)
           </h2>
           {suggestions.length === 0 ? (
@@ -115,8 +116,8 @@ export default function DashboardPage() {
           ) : (
             <ul className="space-y-2">
               {suggestions.map((s) => (
-                <li key={s.task_id} className="py-2 border-b border-surface-100 last:border-0">
-                  <p className="text-sm text-slate-700 truncate">{s.title}</p>
+                <li key={s.task_id} className="py-2 border-b border-surface-100 dark:border-slate-800 last:border-0">
+                  <p className="text-sm text-slate-700 dark:text-slate-300 truncate">{s.title}</p>
                   <p className="text-xs text-slate-400 mt-0.5">{s.reason}</p>
                 </li>
               ))}
@@ -124,8 +125,8 @@ export default function DashboardPage() {
           )}
         </div>
 
-        <div className="card p-6">
-          <h2 className="font-semibold text-slate-900 mb-4 flex items-center gap-2">
+        <div className="card p-5">
+          <h2 className="font-semibold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
             <ShieldAlert size={16} className="text-amber-600" /> Tarefas em risco de SLA
           </h2>
           {riskTasks.length === 0 ? (
@@ -133,7 +134,7 @@ export default function DashboardPage() {
           ) : (
             <ul className="space-y-2">
               {riskTasks.map((t) => (
-                <li key={t.task_id} className="flex items-center gap-3 py-2 border-b border-surface-100 last:border-0">
+                <li key={t.task_id} className="flex items-center gap-3 py-2 border-b border-surface-100 dark:border-slate-800 last:border-0">
                   <span
                     className={clsx(
                       "text-xs font-medium px-2 py-0.5 rounded-full",
@@ -142,40 +143,13 @@ export default function DashboardPage() {
                   >
                     {t.risk === "breached" ? "Estourado" : "Em risco"}
                   </span>
-                  <span className="text-sm text-slate-700 flex-1 truncate">{t.title}</span>
+                  <span className="text-sm text-slate-700 dark:text-slate-300 flex-1 truncate">{t.title}</span>
                 </li>
               ))}
             </ul>
           )}
         </div>
       </div>
-    </div>
-  );
-}
-
-function StatCard({
-  icon,
-  label,
-  value,
-  color,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: number;
-  color: string;
-}) {
-  const colors: Record<string, string> = {
-    blue: "text-blue-600 bg-blue-50",
-    red: "text-red-600 bg-red-50",
-    green: "text-green-600 bg-green-50",
-    purple: "text-purple-600 bg-purple-50",
-  };
-
-  return (
-    <div className="card p-5">
-      <div className={`inline-flex p-2 rounded-lg ${colors[color]} mb-3`}>{icon}</div>
-      <p className="text-2xl font-bold text-slate-900">{value}</p>
-      <p className="text-sm text-slate-500 mt-0.5">{label}</p>
     </div>
   );
 }
@@ -192,18 +166,18 @@ function TaskList({
   urgent?: boolean;
 }) {
   return (
-    <div className="card p-6">
-      <h2 className={`font-semibold mb-4 ${urgent ? "text-red-700" : "text-slate-900"}`}>{title}</h2>
+    <div className="card p-5">
+      <h2 className={`font-semibold mb-3 ${urgent ? "text-red-700" : "text-slate-900 dark:text-white"}`}>{title}</h2>
       {tasks.length === 0 ? (
         <p className="text-slate-400 text-sm">{emptyMsg}</p>
       ) : (
         <ul className="space-y-2">
           {tasks.map((t) => (
-            <li key={t.id} className="flex items-center gap-3 py-2 border-b border-surface-100 last:border-0">
+            <li key={t.id} className="flex items-center gap-3 py-2 border-b border-surface-100 dark:border-slate-800 last:border-0">
               <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${priorityColors[t.priority]}`}>
                 {t.priority}
               </span>
-              <span className="text-sm text-slate-700 flex-1 truncate">{t.title}</span>
+              <span className="text-sm text-slate-700 dark:text-slate-300 flex-1 truncate">{t.title}</span>
             </li>
           ))}
         </ul>

@@ -97,7 +97,7 @@ export function QuickAddTaskModal({
   return (
     <div className="fixed inset-0 bg-black/40 z-50 flex items-start justify-center pt-24 px-4" onClick={onClose}>
       <div
-        className="bg-white w-full max-w-lg rounded-xl shadow-xl border border-surface-200"
+        className="bg-white dark:bg-surface-900 w-full max-w-lg rounded-xl shadow-xl border border-surface-200 dark:border-slate-700"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="p-4">
@@ -105,7 +105,7 @@ export function QuickAddTaskModal({
             ref={titleRef}
             rows={1}
             placeholder="Nome da tarefa"
-            className="w-full resize-none border-none text-base font-medium text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-0 p-0"
+            className="w-full resize-none border-none text-base font-medium text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-0 p-0"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             onKeyDown={(e) => {
@@ -118,7 +118,7 @@ export function QuickAddTaskModal({
           <textarea
             rows={2}
             placeholder="Descrição"
-            className="w-full resize-none border-none text-sm text-slate-600 placeholder:text-slate-400 focus:outline-none focus:ring-0 p-0 mt-1"
+            className="w-full resize-none border-none text-sm text-slate-600 dark:text-slate-400 placeholder:text-slate-400 focus:outline-none focus:ring-0 p-0 mt-1"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
           />
@@ -132,10 +132,10 @@ export function QuickAddTaskModal({
                 onClick={() => toggle("date")}
               />
               {openPopover === "date" && (
-                <div className="absolute z-20 mt-1 w-64 bg-white border border-surface-200 rounded-lg shadow-lg p-3 space-y-2">
+                <div className="absolute z-20 mt-1 w-64 bg-white dark:bg-surface-900 border border-surface-200 dark:border-slate-700 rounded-lg shadow-lg p-3 space-y-2">
                   <div className="grid grid-cols-1 gap-0.5">
                     <button
-                      className="text-left text-sm px-2 py-1.5 rounded hover:bg-surface-50 flex items-center gap-2"
+                      className="text-left text-sm px-2 py-1.5 rounded hover:bg-surface-50 hover:dark:bg-surface-800 flex items-center gap-2"
                       onClick={() => {
                         setDueDate(toLocalInputValue(startOfDay(new Date())));
                         setOpenPopover(null);
@@ -144,7 +144,7 @@ export function QuickAddTaskModal({
                       <Calendar size={14} className="text-green-600" /> Hoje
                     </button>
                     <button
-                      className="text-left text-sm px-2 py-1.5 rounded hover:bg-surface-50 flex items-center gap-2"
+                      className="text-left text-sm px-2 py-1.5 rounded hover:bg-surface-50 hover:dark:bg-surface-800 flex items-center gap-2"
                       onClick={() => {
                         setDueDate(toLocalInputValue(startOfDay(addDays(new Date(), 1))));
                         setOpenPopover(null);
@@ -153,7 +153,7 @@ export function QuickAddTaskModal({
                       <Calendar size={14} className="text-orange-500" /> Amanhã
                     </button>
                     <button
-                      className="text-left text-sm px-2 py-1.5 rounded hover:bg-surface-50 flex items-center gap-2"
+                      className="text-left text-sm px-2 py-1.5 rounded hover:bg-surface-50 hover:dark:bg-surface-800 flex items-center gap-2"
                       onClick={() => {
                         setDueDate(toLocalInputValue(startOfDay(addDays(new Date(), 7))));
                         setOpenPopover(null);
@@ -162,7 +162,7 @@ export function QuickAddTaskModal({
                       <Calendar size={14} className="text-blue-500" /> Próxima semana
                     </button>
                   </div>
-                  <div className="border-t border-surface-100 pt-2">
+                  <div className="border-t border-surface-100 dark:border-slate-800 pt-2">
                     <label className="block text-xs text-slate-400 mb-1">Data e hora personalizada</label>
                     <input
                       type="datetime-local"
@@ -171,7 +171,7 @@ export function QuickAddTaskModal({
                       onChange={(e) => setDueDate(e.target.value)}
                     />
                   </div>
-                  <div className="border-t border-surface-100 pt-2">
+                  <div className="border-t border-surface-100 dark:border-slate-800 pt-2">
                     <label className="text-xs text-slate-400 mb-1 flex items-center gap-1">
                       <Repeat size={12} /> Repetir
                     </label>
@@ -217,11 +217,11 @@ export function QuickAddTaskModal({
                 onClick={() => toggle("priority")}
               />
               {openPopover === "priority" && (
-                <div className="absolute z-20 mt-1 w-52 bg-white border border-surface-200 rounded-lg shadow-lg p-1">
+                <div className="absolute z-20 mt-1 w-52 bg-white dark:bg-surface-900 border border-surface-200 dark:border-slate-700 rounded-lg shadow-lg p-1">
                   {PRIORITY_OPTIONS.map((opt) => (
                     <button
                       key={opt.value}
-                      className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-md hover:bg-surface-50"
+                      className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-md hover:bg-surface-50 hover:dark:bg-surface-800"
                       onClick={() => {
                         setPriority(opt.value);
                         setOpenPopover(null);
@@ -244,10 +244,10 @@ export function QuickAddTaskModal({
                 onClick={() => toggle("reminder")}
               />
               {openPopover === "reminder" && (
-                <div className="absolute z-20 mt-1 w-64 bg-white border border-surface-200 rounded-lg shadow-lg p-3 space-y-2">
+                <div className="absolute z-20 mt-1 w-64 bg-white dark:bg-surface-900 border border-surface-200 dark:border-slate-700 rounded-lg shadow-lg p-3 space-y-2">
                   <div className="grid grid-cols-1 gap-0.5">
                     <button
-                      className="text-left text-sm px-2 py-1.5 rounded hover:bg-surface-50"
+                      className="text-left text-sm px-2 py-1.5 rounded hover:bg-surface-50 hover:dark:bg-surface-800"
                       onClick={() => {
                         const d = new Date();
                         d.setHours(d.getHours() + 1);
@@ -258,7 +258,7 @@ export function QuickAddTaskModal({
                       Daqui a 1 hora
                     </button>
                     <button
-                      className="text-left text-sm px-2 py-1.5 rounded hover:bg-surface-50"
+                      className="text-left text-sm px-2 py-1.5 rounded hover:bg-surface-50 hover:dark:bg-surface-800"
                       onClick={() => {
                         const d = startOfDay(addDays(new Date(), 1));
                         d.setHours(9);
@@ -269,7 +269,7 @@ export function QuickAddTaskModal({
                       Amanhã de manhã (9h)
                     </button>
                     <button
-                      className="text-left text-sm px-2 py-1.5 rounded hover:bg-surface-50"
+                      className="text-left text-sm px-2 py-1.5 rounded hover:bg-surface-50 hover:dark:bg-surface-800"
                       onClick={() => {
                         const d = startOfDay(addDays(new Date(), 7));
                         d.setHours(9);
@@ -280,7 +280,7 @@ export function QuickAddTaskModal({
                       Semana que vem
                     </button>
                   </div>
-                  <div className="border-t border-surface-100 pt-2">
+                  <div className="border-t border-surface-100 dark:border-slate-800 pt-2">
                     <label className="block text-xs text-slate-400 mb-1">Data e hora personalizada</label>
                     <input
                       type="datetime-local"
@@ -313,14 +313,14 @@ export function QuickAddTaskModal({
                 onClick={() => toggle("labels")}
               />
               {openPopover === "labels" && (
-                <div className="absolute z-20 mt-1 w-56 bg-white border border-surface-200 rounded-lg shadow-lg p-2 space-y-1 max-h-64 overflow-y-auto">
+                <div className="absolute z-20 mt-1 w-56 bg-white dark:bg-surface-900 border border-surface-200 dark:border-slate-700 rounded-lg shadow-lg p-2 space-y-1 max-h-64 overflow-y-auto">
                   {labels.length === 0 && (
                     <p className="text-xs text-slate-400 px-2 py-1">Nenhuma etiqueta ainda.</p>
                   )}
                   {labels.map((l) => (
                     <label
                       key={l.id}
-                      className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-surface-50 text-sm cursor-pointer"
+                      className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-surface-50 hover:dark:bg-surface-800 text-sm cursor-pointer"
                     >
                       <input
                         type="checkbox"
@@ -335,7 +335,7 @@ export function QuickAddTaskModal({
                       <span className="flex-1 truncate">{l.name}</span>
                     </label>
                   ))}
-                  <div className="border-t border-surface-100 pt-2 mt-1 flex gap-1 items-center">
+                  <div className="border-t border-surface-100 dark:border-slate-800 pt-2 mt-1 flex gap-1 items-center">
                     <input
                       className="input text-sm flex-1 py-1"
                       placeholder="Nova etiqueta"
@@ -388,7 +388,7 @@ export function QuickAddTaskModal({
                 onClick={() => toggle("location")}
               />
               {openPopover === "location" && (
-                <div className="absolute z-20 mt-1 w-56 bg-white border border-surface-200 rounded-lg shadow-lg p-3">
+                <div className="absolute z-20 mt-1 w-56 bg-white dark:bg-surface-900 border border-surface-200 dark:border-slate-700 rounded-lg shadow-lg p-3">
                   <input
                     autoFocus
                     className="input text-sm py-1"
@@ -432,9 +432,9 @@ export function QuickAddTaskModal({
           </div>
         </div>
 
-        <div className="flex items-center justify-between px-4 py-3 border-t border-surface-100">
+        <div className="flex items-center justify-between px-4 py-3 border-t border-surface-100 dark:border-slate-800">
           <select
-            className="text-sm text-slate-600 bg-transparent border-none focus:outline-none focus:ring-0 cursor-pointer"
+            className="text-sm text-slate-600 dark:text-slate-400 bg-transparent border-none focus:outline-none focus:ring-0 cursor-pointer"
             value={projectId ?? ""}
             onChange={(e) => setProjectId(e.target.value ? Number(e.target.value) : null)}
           >

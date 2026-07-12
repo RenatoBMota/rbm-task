@@ -43,7 +43,7 @@ export function NotificationBell() {
     <div className="relative">
       <button
         onClick={() => setOpen((o) => !o)}
-        className="relative p-2 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-surface-100 transition-colors"
+        className="relative p-2 rounded-lg text-slate-500 hover:text-slate-800 hover:dark:text-slate-100 hover:bg-surface-100 transition-colors"
       >
         <Bell size={20} />
         {unreadCount > 0 && (
@@ -56,9 +56,9 @@ export function NotificationBell() {
       {open && (
         <>
           <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-surface-200 z-20 max-h-96 overflow-y-auto">
-            <div className="flex items-center justify-between px-4 py-3 border-b border-surface-100">
-              <span className="font-semibold text-sm text-slate-800">Notificações</span>
+          <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-surface-900 rounded-lg shadow-lg border border-surface-200 dark:border-slate-700 z-20 max-h-96 overflow-y-auto">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-surface-100 dark:border-slate-800">
+              <span className="font-semibold text-sm text-slate-800 dark:text-slate-100">Notificações</span>
               {unreadCount > 0 && (
                 <button
                   onClick={() => markAllRead.mutate()}
@@ -76,11 +76,11 @@ export function NotificationBell() {
                   key={n.id}
                   onClick={() => !n.is_read && markRead.mutate(n.id)}
                   className={clsx(
-                    "w-full text-left px-4 py-3 border-b border-surface-50 last:border-0 hover:bg-surface-50 transition-colors",
+                    "w-full text-left px-4 py-3 border-b border-surface-50 last:border-0 hover:bg-surface-50 hover:dark:bg-surface-800 transition-colors",
                     !n.is_read && "bg-primary-50/50"
                   )}
                 >
-                  <p className="text-sm text-slate-700">{n.message}</p>
+                  <p className="text-sm text-slate-700 dark:text-slate-300">{n.message}</p>
                   <p className="text-xs text-slate-400 mt-1">
                     {formatDistanceToNow(new Date(n.created_at), { addSuffix: true, locale: ptBR })}
                   </p>

@@ -231,7 +231,7 @@ export function GanttChart({
 
   return (
     <div className="card overflow-hidden">
-      <div className="flex items-center justify-between px-4 py-2.5 border-b border-surface-100">
+      <div className="flex items-center justify-between px-4 py-2.5 border-b border-surface-100 dark:border-slate-800">
         <div className="flex items-center gap-3 text-xs text-slate-500">
           <span className="flex items-center gap-1">
             <span className="w-3 h-1.5 rounded-sm bg-primary-600 inline-block" /> Tarefa
@@ -254,13 +254,13 @@ export function GanttChart({
             <Plus size={14} /> Nova tarefa
           </button>
           <button
-            className="p-1.5 rounded hover:bg-surface-100 text-slate-500"
+            className="p-1.5 rounded hover:bg-surface-100 hover:dark:bg-surface-800 text-slate-500"
             onClick={() => setDayWidth((w) => Math.max(w - 6, MIN_DAY_WIDTH))}
           >
             <ZoomOut size={16} />
           </button>
           <button
-            className="p-1.5 rounded hover:bg-surface-100 text-slate-500"
+            className="p-1.5 rounded hover:bg-surface-100 hover:dark:bg-surface-800 text-slate-500"
             onClick={() => setDayWidth((w) => Math.min(w + 6, MAX_DAY_WIDTH))}
           >
             <ZoomIn size={16} />
@@ -277,25 +277,25 @@ export function GanttChart({
       >
         <div style={{ width: LEFT_WIDTH + timelineWidth, position: "relative" }}>
           {/* header */}
-          <div className="flex sticky top-0 z-30 bg-white">
+          <div className="flex sticky top-0 z-30 bg-white dark:bg-surface-900">
             <div
-              className="sticky left-0 z-40 bg-white border-r border-b border-surface-200 flex items-center px-3 text-xs font-semibold text-slate-500"
+              className="sticky left-0 z-40 bg-white dark:bg-surface-900 border-r border-b border-surface-200 dark:border-slate-700 flex items-center px-3 text-xs font-semibold text-slate-500"
               style={{ width: LEFT_WIDTH, height: HEADER_H, flexShrink: 0 }}
             >
               Tarefa
             </div>
-            <div className="relative border-b border-surface-200" style={{ width: timelineWidth, height: HEADER_H }}>
+            <div className="relative border-b border-surface-200 dark:border-slate-700" style={{ width: timelineWidth, height: HEADER_H }}>
               {dayColumns.map((col) => (
                 <div
                   key={col.offset}
                   className={clsx(
-                    "absolute top-0 h-full flex flex-col items-center justify-center text-[10px] border-r border-surface-100",
-                    isWeekend(col.date) && "bg-surface-50"
+                    "absolute top-0 h-full flex flex-col items-center justify-center text-[10px] border-r border-surface-100 dark:border-slate-800",
+                    isWeekend(col.date) && "bg-surface-50 dark:bg-surface-800"
                   )}
                   style={{ left: col.offset, width: dayWidth }}
                 >
                   <span className="text-slate-400">{format(col.date, "EEEEEE", { locale: ptBR })}</span>
-                  <span className="text-slate-600 font-medium">{format(col.date, "d")}</span>
+                  <span className="text-slate-600 dark:text-slate-400 font-medium">{format(col.date, "d")}</span>
                 </div>
               ))}
             </div>
@@ -321,7 +321,7 @@ export function GanttChart({
             return (
               <div key={row.task.id} className="flex border-b border-surface-50" style={{ height: ROW_H }}>
                 <div
-                  className="sticky left-0 z-20 bg-white border-r border-surface-200 flex items-center gap-1.5 px-3 overflow-hidden"
+                  className="sticky left-0 z-20 bg-white dark:bg-surface-900 border-r border-surface-200 dark:border-slate-700 flex items-center gap-1.5 px-3 overflow-hidden"
                   style={{ width: LEFT_WIDTH, flexShrink: 0, paddingLeft: 12 + row.depth * 14 }}
                 >
                   <span
@@ -335,7 +335,7 @@ export function GanttChart({
                   <button
                     className={clsx(
                       "text-sm truncate text-left hover:underline",
-                      row.task.is_completed ? "line-through text-slate-400" : "text-slate-700"
+                      row.task.is_completed ? "line-through text-slate-400" : "text-slate-700 dark:text-slate-300"
                     )}
                     onClick={() => onTaskClick(row.task.id)}
                     title={row.task.title}
@@ -347,7 +347,7 @@ export function GanttChart({
                   {dayColumns.map((col) => (
                     <div
                       key={col.offset}
-                      className={clsx("absolute top-0 h-full border-r border-surface-50", isWeekend(col.date) && "bg-surface-50/70")}
+                      className={clsx("absolute top-0 h-full border-r border-surface-50", isWeekend(col.date) && "bg-surface-50 dark:bg-surface-800/70")}
                       style={{ left: col.offset, width: dayWidth }}
                     />
                   ))}
@@ -421,7 +421,7 @@ export function GanttChart({
                         onPointerDown={(e) => handleBarPointerDown(e, row.task, "resize-end")}
                       />
                       <button
-                        className="absolute -right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 rounded-full bg-white border-2 border-primary-600 opacity-0 group-hover:opacity-100 cursor-crosshair"
+                        className="absolute -right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 rounded-full bg-white dark:bg-surface-900 border-2 border-primary-600 opacity-0 group-hover:opacity-100 cursor-crosshair"
                         onPointerDown={(e) => {
                           e.stopPropagation();
                           if (containerRef.current) {

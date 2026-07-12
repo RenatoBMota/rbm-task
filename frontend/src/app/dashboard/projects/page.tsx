@@ -138,7 +138,7 @@ export default function ProjectsPage() {
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-slate-900">Projetos</h1>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Projetos</h1>
         <div className="flex items-center gap-3">
           <label className="flex items-center gap-2 text-sm text-slate-500">
             <input
@@ -172,7 +172,7 @@ export default function ProjectsPage() {
             />
             <div className="flex items-center gap-4 flex-wrap">
               <div className="flex items-center gap-2">
-                <label className="text-sm text-slate-600 flex items-center gap-1">
+                <label className="text-sm text-slate-600 dark:text-slate-400 flex items-center gap-1">
                   <Calendar size={14} /> Início:
                 </label>
                 <input
@@ -183,7 +183,7 @@ export default function ProjectsPage() {
                 />
               </div>
               <div className="flex items-center gap-2">
-                <label className="text-sm text-slate-600">Fim:</label>
+                <label className="text-sm text-slate-600 dark:text-slate-400">Fim:</label>
                 <input
                   type="date"
                   className="input py-1.5 w-40"
@@ -197,7 +197,7 @@ export default function ProjectsPage() {
             )}
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
-                <label className="text-sm text-slate-600">Cor:</label>
+                <label className="text-sm text-slate-600 dark:text-slate-400">Cor:</label>
                 <input
                   type="color"
                   value={form.color}
@@ -206,7 +206,7 @@ export default function ProjectsPage() {
                 />
               </div>
               {!editingId && (
-                <label className="flex items-center gap-2 text-sm text-slate-600">
+                <label className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
                   <input
                     type="checkbox"
                     checked={form.is_template}
@@ -254,7 +254,7 @@ export default function ProjectsPage() {
                     <Folder size={20} style={{ color: p.color }} />
                   </div>
                   <div className="min-w-0">
-                    <h3 className="font-semibold text-slate-900 truncate flex items-center gap-2">
+                    <h3 className="font-semibold text-slate-900 dark:text-white truncate flex items-center gap-2">
                       {p.name}
                       {p.is_template && (
                         <span className="text-xs font-normal px-1.5 py-0.5 rounded bg-primary-50 text-primary-600">
