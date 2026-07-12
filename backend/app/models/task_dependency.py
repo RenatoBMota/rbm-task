@@ -21,8 +21,8 @@ class TaskDependency(Base):
     __table_args__ = (UniqueConstraint("task_id", "depends_on_id", name="uq_task_dependency"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    task_id: Mapped[int] = mapped_column(ForeignKey("tasks.id"), nullable=False)
-    depends_on_id: Mapped[int] = mapped_column(ForeignKey("tasks.id"), nullable=False)
+    task_id: Mapped[int] = mapped_column(ForeignKey("tasks.id", ondelete="CASCADE"), nullable=False)
+    depends_on_id: Mapped[int] = mapped_column(ForeignKey("tasks.id", ondelete="CASCADE"), nullable=False)
     dependency_type: Mapped[DependencyType] = mapped_column(
         Enum(DependencyType), default=DependencyType.FINISH_START, nullable=False
     )

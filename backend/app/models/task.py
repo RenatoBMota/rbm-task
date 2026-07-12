@@ -52,7 +52,7 @@ class Task(Base):
 
     project_id: Mapped[int | None] = mapped_column(ForeignKey("projects.id"), nullable=True)
     assignee_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
-    parent_id: Mapped[int | None] = mapped_column(ForeignKey("tasks.id"), nullable=True)
+    parent_id: Mapped[int | None] = mapped_column(ForeignKey("tasks.id", ondelete="CASCADE"), nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
@@ -65,7 +65,9 @@ class Task(Base):
 
     project: Mapped["Project | None"] = relationship("Project", back_populates="tasks")
     assignee: Mapped["User | None"] = relationship("User", back_populates="tasks")
-    subtasks: Mapped[list["Task"]] = relationship("Task", back_populates="parent")
+    subtasks: Mapped[list["Task"]] = relationship(
+        "Task", back_populates="parent", cascade="all, delete-orphan"
+    )
     parent: Mapped["Task | None"] = relationship("Task", back_populates="subtasks", remote_side="Task.id")
     checklist_items: Mapped[list["ChecklistItem"]] = relationship(
         "ChecklistItem", back_populates="task", cascade="all, delete-orphan", order_by="ChecklistItem.position"

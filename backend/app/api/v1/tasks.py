@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.api.deps import get_current_user
@@ -376,4 +377,11 @@ def delete(
     current_user: User = Depends(get_current_user),
 ):
     task = require_task_access(db, task_id, current_user.id)
-    delete_task(db, task)
+    try:
+        delete_task(db, task)
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Não foi possível excluir a tarefa porque outros registros ainda dependem dela.",
+        )

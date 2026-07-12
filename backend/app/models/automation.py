@@ -37,7 +37,7 @@ class AutomationLog(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     rule_id: Mapped[int] = mapped_column(ForeignKey("automation_rules.id"), nullable=False)
-    task_id: Mapped[int | None] = mapped_column(ForeignKey("tasks.id"), nullable=True)
+    task_id: Mapped[int | None] = mapped_column(ForeignKey("tasks.id", ondelete="SET NULL"), nullable=True)
     success: Mapped[bool] = mapped_column(Boolean, default=True)
     detail: Mapped[str | None] = mapped_column(String(1000), nullable=True)
     executed_at: Mapped[datetime] = mapped_column(

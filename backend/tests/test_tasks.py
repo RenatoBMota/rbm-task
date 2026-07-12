@@ -116,6 +116,41 @@ def test_delete_task(client):
     assert client.get(f"/api/v1/tasks/{task['id']}", headers=headers).status_code == 404
 
 
+def test_delete_task_with_notification_dependents_and_subtasks(client):
+    """Regression test: deleting a task used to raise a FK IntegrityError (500) in
+    Postgres when a notification referenced it, another task depended on it, or it
+    had subtasks. SQLite doesn't enforce FK constraints so this only exercises the
+    ORM-level cascade paths; the ON DELETE SET NULL/CASCADE behavior itself was
+    verified live against Postgres.
+    """
+    token = register_and_login(client)
+    headers = auth_headers(token)
+    project = _create_project(client, headers)
+    me = client.get("/api/v1/users/me", headers=headers).json()
+
+    task = client.post(
+        "/api/v1/tasks",
+        json={"title": "teste", "project_id": project["id"], "assignee_id": me["id"]},
+        headers=headers,
+    ).json()
+    dependent = client.post(
+        "/api/v1/tasks", json={"title": "depende", "project_id": project["id"]}, headers=headers
+    ).json()
+    client.post(
+        f"/api/v1/tasks/{dependent['id']}/dependencies", json={"depends_on_id": task["id"]}, headers=headers
+    )
+    subtask = client.post(
+        "/api/v1/tasks",
+        json={"title": "subtarefa", "project_id": project["id"], "parent_id": task["id"]},
+        headers=headers,
+    ).json()
+
+    response = client.delete(f"/api/v1/tasks/{task['id']}", headers=headers)
+    assert response.status_code == 204
+    assert client.get(f"/api/v1/tasks/{dependent['id']}", headers=headers).status_code == 200
+    assert client.get(f"/api/v1/tasks/{subtask['id']}", headers=headers).status_code == 404
+
+
 def test_list_tasks_scoped_to_workspace_includes_personal_tasks(client):
     token = register_and_login(client)
     headers = auth_headers(token)

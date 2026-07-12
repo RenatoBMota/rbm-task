@@ -96,6 +96,7 @@ export function TaskDetailModal({ taskId, onClose }: { taskId: number; onClose: 
   const [moveProjectId, setMoveProjectId] = useState<number | null>(null);
   const [moveStatus, setMoveStatus] = useState<TaskStatus>("todo");
   const [shareMessage, setShareMessage] = useState("");
+  const [deleteError, setDeleteError] = useState("");
   const menuRef = useOutsideClick<HTMLDivElement>(() => {
     setMenuOpen(false);
     setMenuView("main");
@@ -180,6 +181,10 @@ export function TaskDetailModal({ taskId, onClose }: { taskId: number; onClose: 
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["tasks"] });
       onClose();
+    },
+    onError: (err: unknown) => {
+      const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+      setDeleteError(msg || "Não foi possível excluir a tarefa. Tente novamente.");
     },
   });
 
@@ -429,14 +434,26 @@ export function TaskDetailModal({ taskId, onClose }: { taskId: number; onClose: 
                     ) : (
                       <div className="p-3 space-y-3">
                         <p className="text-sm text-slate-700">Excluir esta tarefa permanentemente?</p>
+                        {deleteError && (
+                          <p className="text-xs text-red-600 bg-red-50 px-2 py-1.5 rounded">{deleteError}</p>
+                        )}
                         <div className="flex gap-2">
-                          <button className="btn-secondary flex-1 text-sm py-1" onClick={() => setMenuView("main")}>
+                          <button
+                            className="btn-secondary flex-1 text-sm py-1"
+                            onClick={() => {
+                              setMenuView("main");
+                              setDeleteError("");
+                            }}
+                          >
                             Cancelar
                           </button>
                           <button
                             className="flex-1 text-sm py-1 rounded-md bg-red-600 text-white hover:bg-red-700 disabled:opacity-50"
                             disabled={deleteTask.isPending}
-                            onClick={() => deleteTask.mutate()}
+                            onClick={() => {
+                              setDeleteError("");
+                              deleteTask.mutate();
+                            }}
                           >
                             {deleteTask.isPending ? "Excluindo..." : "Excluir"}
                           </button>
