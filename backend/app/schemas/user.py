@@ -1,5 +1,6 @@
 from datetime import datetime
 from pydantic import BaseModel, EmailStr, Field
+from app.models.user import UserRole
 
 
 class UserBase(BaseModel):
@@ -16,9 +17,14 @@ class UserUpdate(BaseModel):
     avatar_url: str | None = None
 
 
+class UserRoleUpdate(BaseModel):
+    role: UserRole
+
+
 class UserOut(UserBase):
     id: int
     is_active: bool
+    role: UserRole
     avatar_url: str | None
     created_at: datetime
 

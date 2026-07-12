@@ -1,7 +1,13 @@
 from datetime import datetime, timezone
-from sqlalchemy import String, Boolean, DateTime, Text
+from enum import Enum as PyEnum
+from sqlalchemy import String, Boolean, DateTime, Text, Enum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.core.database import Base
+
+
+class UserRole(str, PyEnum):
+    ADMIN = "admin"
+    MEMBER = "member"
 
 
 class User(Base):
@@ -12,7 +18,7 @@ class User(Base):
     full_name: Mapped[str] = mapped_column(String(255), nullable=False)
     hashed_password: Mapped[str] = mapped_column(Text, nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
-    is_superuser: Mapped[bool] = mapped_column(Boolean, default=False)
+    role: Mapped[UserRole] = mapped_column(Enum(UserRole), default=UserRole.MEMBER)
     avatar_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)

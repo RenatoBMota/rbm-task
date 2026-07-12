@@ -610,12 +610,33 @@ RBM TASK CORE
 | DevOps e infraestrutura | ✅ Planejados |
 | Modelo SaaS | ✅ Definido |
 | Roadmap de entregas | ✅ Definido |
-| **Implementação (código)** | 🔜 Próxima fase |
+| **Implementação (código)** | ✅ Fase 1 concluída |
 
 ---
 
-> **Próxima etapa:** Volume 31 — Implementação real do MVP.
-> Estrutura do repositório, Docker, banco, backend, frontend, autenticação e primeiro módulo funcional rodando na VPS.
+## Acompanhamento de Fases
+
+### Fase 1 — Fundação (MVP) — ✅ Concluída
+
+- [x] Repositório estruturado (backend FastAPI + frontend Next.js)
+- [x] Docker Compose configurado (Nginx, SSL, domínio)
+- [x] Banco PostgreSQL com migrations (Alembic — migration inicial versionada)
+- [x] Autenticação (registro, login, JWT, refresh token)
+- [x] Gestão de usuários e perfis (roles admin/member)
+- [x] CRUD de Projetos
+- [x] CRUD de Tarefas (prioridade, prazo, responsável, subtarefas)
+- [x] Dashboard básico (tarefas do dia, atrasadas, pendentes)
+- [x] Deploy inicial na VPS
+
+### Fase 2 — Produtividade — 🔜 Próxima fase
+
+- [ ] Kanban com drag & drop
+- [ ] Calendário (diário, semanal, mensal)
+- [ ] Checklist e subtarefas (UI)
+- [ ] Comentários e menções
+- [ ] Upload de arquivos (MinIO)
+- [ ] Notificações internas (bell)
+- [ ] PWA (funcionar como app no celular)
 
 ---
 
