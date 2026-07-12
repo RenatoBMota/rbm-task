@@ -1,5 +1,6 @@
 import calendar
 from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 from app.models.task import Task
@@ -10,6 +11,9 @@ from app.core.critical_path import compute_critical_path
 from app.core.predictive_engine import project_risk
 from app.crud.task import get_all_project_tasks
 from app.crud.resource import task_cost
+
+
+BUSINESS_TZ = ZoneInfo("America/Sao_Paulo")
 
 
 def _aware(dt: datetime) -> datetime:
@@ -105,6 +109,10 @@ def _period_bounds(
         end = _aware(custom_end)
         length = end - start
         return start, end, start - length, start
+
+    # Calendar day/week/month boundaries must reflect the business timezone's wall
+    # clock, not UTC's — otherwise "today" can be off by hours for users in Brazil.
+    now = now.astimezone(BUSINESS_TZ)
 
     if period == "daily":
         # Calendar day: 00:00:00 to 23:59:59.999999

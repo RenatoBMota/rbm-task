@@ -1,5 +1,8 @@
 from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 from tests.conftest import register_and_login, auth_headers, get_default_workspace_id, create_project
+
+BUSINESS_TZ = ZoneInfo("America/Sao_Paulo")
 
 
 def test_admin_can_list_users_and_change_role(client):
@@ -148,7 +151,7 @@ def test_recap_daily_uses_calendar_day_boundaries(client):
     headers = auth_headers(token)
     workspace_id = get_default_workspace_id(client, headers)
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(BUSINESS_TZ)
     response = client.get(
         f"/api/v1/reports/workspaces/{workspace_id}/recap", params={"period": "daily"}, headers=headers
     )
@@ -167,7 +170,7 @@ def test_recap_weekly_spans_sunday_to_saturday(client):
     headers = auth_headers(token)
     workspace_id = get_default_workspace_id(client, headers)
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(BUSINESS_TZ)
     response = client.get(
         f"/api/v1/reports/workspaces/{workspace_id}/recap", params={"period": "weekly"}, headers=headers
     )
@@ -186,7 +189,7 @@ def test_recap_monthly_spans_current_calendar_month(client):
     headers = auth_headers(token)
     workspace_id = get_default_workspace_id(client, headers)
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(BUSINESS_TZ)
     response = client.get(
         f"/api/v1/reports/workspaces/{workspace_id}/recap", params={"period": "monthly"}, headers=headers
     )
