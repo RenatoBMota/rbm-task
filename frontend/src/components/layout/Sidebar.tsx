@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, FolderOpen, CheckSquare, LogOut } from "lucide-react";
+import { LayoutDashboard, FolderOpen, CheckSquare, KanbanSquare, Calendar, LogOut } from "lucide-react";
 import { useAuthStore } from "@/store/auth";
 import { clsx } from "clsx";
 
@@ -10,6 +10,8 @@ const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/dashboard/projects", label: "Projetos", icon: FolderOpen },
   { href: "/dashboard/tasks", label: "Tarefas", icon: CheckSquare },
+  { href: "/dashboard/kanban", label: "Kanban", icon: KanbanSquare },
+  { href: "/dashboard/calendar", label: "Calendário", icon: Calendar },
 ];
 
 export function Sidebar() {

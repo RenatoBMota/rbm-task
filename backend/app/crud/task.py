@@ -36,6 +36,10 @@ def get_today_tasks(db: Session, user_id: int) -> list[Task]:
     ).all()
 
 
+def get_subtasks(db: Session, parent_id: int) -> list[Task]:
+    return db.query(Task).filter(Task.parent_id == parent_id).order_by(Task.position).all()
+
+
 def get_board_tasks(db: Session, project_id: int) -> list[Task]:
     return (
         db.query(Task)

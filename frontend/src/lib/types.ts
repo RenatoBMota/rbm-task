@@ -1,0 +1,82 @@
+export type TaskPriority = "P1" | "P2" | "P3" | "P4";
+export type TaskStatus = "todo" | "in_progress" | "in_review" | "done" | "cancelled";
+
+export interface Task {
+  id: number;
+  title: string;
+  description: string | null;
+  priority: TaskPriority;
+  status: TaskStatus;
+  due_date: string | null;
+  estimated_minutes: number | null;
+  is_completed: boolean;
+  completed_at: string | null;
+  position: number;
+  project_id: number | null;
+  assignee_id: number | null;
+  parent_id: number | null;
+  created_at: string;
+  updated_at: string;
+  subtask_count: number;
+}
+
+export interface Project {
+  id: number;
+  name: string;
+  description: string | null;
+  color: string;
+  icon: string;
+  is_archived: boolean;
+}
+
+export interface ChecklistItem {
+  id: number;
+  title: string;
+  is_completed: boolean;
+  position: number;
+  task_id: number;
+}
+
+export interface Comment {
+  id: number;
+  content: string;
+  task_id: number;
+  author_id: number;
+  created_at: string;
+}
+
+export interface Attachment {
+  id: number;
+  filename: string;
+  content_type: string | null;
+  size_bytes: number | null;
+  task_id: number;
+  uploaded_by_id: number;
+  created_at: string;
+}
+
+export type NotificationType = "task_assigned" | "comment_mention" | "new_comment";
+
+export interface Notification {
+  id: number;
+  type: NotificationType;
+  message: string;
+  is_read: boolean;
+  task_id: number | null;
+  created_at: string;
+}
+
+export const TASK_STATUSES: { value: TaskStatus; label: string }[] = [
+  { value: "todo", label: "A Fazer" },
+  { value: "in_progress", label: "Em Progresso" },
+  { value: "in_review", label: "Em Revisão" },
+  { value: "done", label: "Concluído" },
+  { value: "cancelled", label: "Cancelado" },
+];
+
+export const PRIORITY_COLORS: Record<TaskPriority, string> = {
+  P1: "bg-red-100 text-red-700 border-red-200",
+  P2: "bg-orange-100 text-orange-700 border-orange-200",
+  P3: "bg-blue-100 text-blue-700 border-blue-200",
+  P4: "bg-slate-100 text-slate-600 border-slate-200",
+};

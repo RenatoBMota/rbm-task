@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.api.deps import get_current_user
 from app.crud.task import (
-    get_task, get_tasks, get_today_tasks, get_overdue_tasks, get_board_tasks,
+    get_task, get_tasks, get_today_tasks, get_overdue_tasks, get_board_tasks, get_subtasks,
     create_task, update_task, delete_task, move_task
 )
 from app.models.user import User
@@ -67,6 +67,17 @@ def get(
     if not task:
         raise HTTPException(status_code=404, detail="Tarefa não encontrada")
     return task
+
+
+@router.get("/{task_id}/subtasks", response_model=list[TaskOut])
+def list_subtasks(
+    task_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if not get_task(db, task_id):
+        raise HTTPException(status_code=404, detail="Tarefa não encontrada")
+    return get_subtasks(db, task_id)
 
 
 @router.put("/{task_id}", response_model=TaskOut)

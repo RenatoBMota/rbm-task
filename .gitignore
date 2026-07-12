@@ -25,6 +25,15 @@ out/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+*.tsbuildinfo
+
+# next-pwa generated files
+frontend/public/sw.js
+frontend/public/sw.js.map
+frontend/public/swe-worker-*.js
+frontend/public/swe-worker-*.js.map
+frontend/public/workbox-*.js
+frontend/public/workbox-*.js.map
 
 # Docker
 *.log
@@ -38,7 +47,3 @@ yarn-error.log*
 # OS
 .DS_Store
 Thumbs.db
-
-# Alembic
-alembic/versions/*.py
-!alembic/versions/.gitkeep
