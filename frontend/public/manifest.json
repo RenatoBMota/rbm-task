@@ -1,6 +1,6 @@
 {
-  "name": "RBM TASK Enterprise",
-  "short_name": "RBM TASK",
+  "name": "TASK R PRO",
+  "short_name": "TASK R PRO",
   "description": "Plataforma inteligente para transformar planejamento em execução.",
   "start_url": "/dashboard",
   "display": "standalone",

@@ -36,7 +36,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <Sidebar />
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         <header className="flex justify-between lg:justify-end items-center px-4 lg:px-8 py-2.5 lg:py-3 border-b border-surface-200 dark:border-slate-700 dark:border-slate-800 bg-white dark:bg-surface-900 sticky top-0 z-30">
-          <span className="lg:hidden font-bold text-slate-900 dark:text-white text-sm tracking-wide">RBM TASK</span>
+          <span className="lg:hidden flex items-center gap-2 font-bold text-slate-900 dark:text-white text-sm tracking-wide">
+            <img src="/logo-icon.png" alt="" className="w-6 h-6" /> TASK R PRO
+          </span>
           <div className="flex items-center gap-3">
             <ThemeToggle className="hidden lg:flex" />
             <NotificationBell />

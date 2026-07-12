@@ -84,7 +84,7 @@ export default function WorkspaceSettingsPage() {
             </button>
           </div>
           {addMember.isError && (
-            <p className="text-sm text-red-600 mt-2">Usuário não encontrado (precisa já ter uma conta no RBM TASK).</p>
+            <p className="text-sm text-red-600 mt-2">Usuário não encontrado (precisa já ter uma conta no TASK R PRO).</p>
           )}
         </div>
       )}

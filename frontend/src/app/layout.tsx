@@ -3,7 +3,7 @@ import "./globals.css";
 import { Providers } from "./providers";
 
 export const metadata: Metadata = {
-  title: "RBM TASK",
+  title: "TASK R PRO",
   description: "Plataforma de execução operacional",
   manifest: "/manifest.json",
   icons: {
