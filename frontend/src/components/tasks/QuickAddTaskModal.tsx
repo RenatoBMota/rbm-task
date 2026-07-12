@@ -2,61 +2,20 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Calendar, Flag, Bell, Tag, MapPin, Repeat, Plus, Check } from "lucide-react";
+import { Calendar, Flag, Bell, Tag, MapPin, Repeat, Plus, Check, Paperclip, X } from "lucide-react";
 import { format, addDays, startOfDay } from "date-fns";
 import { clsx } from "clsx";
 import api from "@/lib/api";
 import { useLabels } from "@/hooks/useLabels";
+import { useOutsideClick } from "@/hooks/useOutsideClick";
+import { Chip } from "@/components/tasks/Chip";
+import { PRIORITY_OPTIONS, RECURRENCE_OPTIONS, LABEL_COLORS } from "@/lib/taskOptions";
 import type { Project, TaskPriority, TaskRecurrence, TaskStatus } from "@/lib/types";
-
-const PRIORITY_OPTIONS: { value: TaskPriority; label: string; dot: string }[] = [
-  { value: "P1", label: "Prioridade 1 — Urgente", dot: "bg-red-500" },
-  { value: "P2", label: "Prioridade 2 — Alta", dot: "bg-orange-500" },
-  { value: "P3", label: "Prioridade 3 — Média", dot: "bg-blue-500" },
-  { value: "P4", label: "Prioridade 4 — Baixa", dot: "bg-slate-400" },
-];
-
-const RECURRENCE_OPTIONS: { value: TaskRecurrence; label: string }[] = [
-  { value: "none", label: "Não repetir" },
-  { value: "daily", label: "Todo dia" },
-  { value: "weekly", label: "Toda semana" },
-  { value: "monthly", label: "Todo mês" },
-];
-
-const LABEL_COLORS = ["#ef4444", "#f97316", "#eab308", "#22c55e", "#06b6d4", "#6366f1", "#a855f7", "#ec4899"];
 
 type PopoverKey = "date" | "priority" | "reminder" | "labels" | "location" | null;
 
 function toLocalInputValue(date: Date) {
   return format(date, "yyyy-MM-dd'T'HH:mm");
-}
-
-function Chip({
-  icon,
-  label,
-  active,
-  onClick,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  active?: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={clsx(
-        "flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-full border transition-colors max-w-[180px]",
-        active
-          ? "bg-primary-50 border-primary-200 text-primary-700"
-          : "bg-white border-surface-200 text-slate-500 hover:border-surface-300"
-      )}
-    >
-      {icon}
-      <span className="truncate">{label}</span>
-    </button>
-  );
 }
 
 export function QuickAddTaskModal({
@@ -72,8 +31,9 @@ export function QuickAddTaskModal({
 }) {
   const qc = useQueryClient();
   const titleRef = useRef<HTMLTextAreaElement>(null);
-  const chipsRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [openPopover, setOpenPopover] = useState<PopoverKey>(null);
+  const chipsRef = useOutsideClick<HTMLDivElement>(() => setOpenPopover(null));
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -85,21 +45,12 @@ export function QuickAddTaskModal({
   const [labelIds, setLabelIds] = useState<number[]>([]);
   const [projectId, setProjectId] = useState<number | null>(defaultProjectId ?? null);
   const [newLabelName, setNewLabelName] = useState("");
+  const [attachedFile, setAttachedFile] = useState<File | null>(null);
 
   const { labels, createLabel } = useLabels();
 
   useEffect(() => {
     titleRef.current?.focus();
-  }, []);
-
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (chipsRef.current && !chipsRef.current.contains(e.target as Node)) {
-        setOpenPopover(null);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   const createTask = useMutation({
@@ -121,6 +72,13 @@ export function QuickAddTaskModal({
       }
       for (const labelId of labelIds) {
         await api.post(`/tasks/${task.id}/labels/${labelId}`);
+      }
+      if (attachedFile) {
+        const formData = new FormData();
+        formData.append("file", attachedFile);
+        await api.post(`/tasks/${task.id}/attachments`, formData, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
       }
       return task;
     },
@@ -444,6 +402,33 @@ export function QuickAddTaskModal({
                 </div>
               )}
             </div>
+
+            <div className="flex items-center gap-1">
+              <Chip
+                icon={<Paperclip size={13} />}
+                label={attachedFile ? attachedFile.name : "Anexo"}
+                active={!!attachedFile}
+                onClick={() => fileInputRef.current?.click()}
+              />
+              {attachedFile && (
+                <button
+                  type="button"
+                  className="text-slate-300 hover:text-red-500"
+                  onClick={() => {
+                    setAttachedFile(null);
+                    if (fileInputRef.current) fileInputRef.current.value = "";
+                  }}
+                >
+                  <X size={14} />
+                </button>
+              )}
+              <input
+                ref={fileInputRef}
+                type="file"
+                className="hidden"
+                onChange={(e) => setAttachedFile(e.target.files?.[0] ?? null)}
+              />
+            </div>
           </div>
         </div>
 
@@ -460,13 +445,18 @@ export function QuickAddTaskModal({
               </option>
             ))}
           </select>
-          <div className="flex gap-2">
-            <button className="btn-secondary" onClick={onClose}>
-              Cancelar
-            </button>
-            <button className="btn-primary" disabled={!title.trim() || createTask.isPending} onClick={submit}>
-              {createTask.isPending ? "Adicionando..." : "Adicionar tarefa"}
-            </button>
+          <div className="flex flex-col items-end gap-1">
+            <div className="flex gap-2">
+              <button className="btn-secondary" onClick={onClose}>
+                Cancelar
+              </button>
+              <button className="btn-primary" disabled={!title.trim() || createTask.isPending} onClick={submit}>
+                {createTask.isPending ? "Adicionando..." : "Adicionar tarefa"}
+              </button>
+            </div>
+            {createTask.isError && (
+              <p className="text-xs text-red-500">Não foi possível salvar a tarefa. Tente novamente.</p>
+            )}
           </div>
         </div>
       </div>
