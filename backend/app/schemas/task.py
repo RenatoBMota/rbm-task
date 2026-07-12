@@ -29,12 +29,19 @@ class TaskUpdate(BaseModel):
     project_id: int | None = None
     assignee_id: int | None = None
     is_completed: bool | None = None
+    position: int | None = None
+
+
+class TaskMove(BaseModel):
+    status: TaskStatus
+    position: int
 
 
 class TaskOut(TaskBase):
     id: int
     is_completed: bool
     completed_at: datetime | None
+    position: int
     created_at: datetime
     updated_at: datetime
     subtask_count: int = 0

@@ -3,11 +3,11 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.api.deps import get_current_user
 from app.crud.task import (
-    get_task, get_tasks, get_today_tasks, get_overdue_tasks,
-    create_task, update_task, delete_task
+    get_task, get_tasks, get_today_tasks, get_overdue_tasks, get_board_tasks,
+    create_task, update_task, delete_task, move_task
 )
 from app.models.user import User
-from app.schemas.task import TaskCreate, TaskUpdate, TaskOut
+from app.schemas.task import TaskCreate, TaskUpdate, TaskOut, TaskMove
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
 
@@ -37,6 +37,15 @@ def list_overdue_tasks(
     current_user: User = Depends(get_current_user),
 ):
     return get_overdue_tasks(db, current_user.id)
+
+
+@router.get("/board", response_model=list[TaskOut])
+def list_board_tasks(
+    project_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    return get_board_tasks(db, project_id)
 
 
 @router.post("/", response_model=TaskOut, status_code=status.HTTP_201_CREATED)
@@ -71,6 +80,19 @@ def update(
     if not task:
         raise HTTPException(status_code=404, detail="Tarefa não encontrada")
     return update_task(db, task, task_in)
+
+
+@router.patch("/{task_id}/move", response_model=TaskOut)
+def move(
+    task_id: int,
+    move_in: TaskMove,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    task = get_task(db, task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="Tarefa não encontrada")
+    return move_task(db, task, move_in.status, move_in.position)
 
 
 @router.delete("/{task_id}", status_code=status.HTTP_204_NO_CONTENT)

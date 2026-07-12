@@ -1,6 +1,8 @@
 from datetime import datetime, timezone
 from sqlalchemy.orm import Session
-from app.models.task import Task
+from app.models.task import Task, TaskStatus
+from app.models.notification import NotificationType
+from app.crud.notification import create_notification
 from app.schemas.task import TaskCreate, TaskUpdate
 
 
@@ -34,6 +36,15 @@ def get_today_tasks(db: Session, user_id: int) -> list[Task]:
     ).all()
 
 
+def get_board_tasks(db: Session, project_id: int) -> list[Task]:
+    return (
+        db.query(Task)
+        .filter(Task.project_id == project_id, Task.parent_id == None)
+        .order_by(Task.status, Task.position)
+        .all()
+    )
+
+
 def get_overdue_tasks(db: Session, user_id: int) -> list[Task]:
     now = datetime.now(timezone.utc)
     return db.query(Task).filter(
@@ -47,10 +58,36 @@ def create_task(db: Session, task_in: TaskCreate, creator_id: int) -> Task:
     db_task = Task(**task_in.model_dump())
     if not db_task.assignee_id:
         db_task.assignee_id = creator_id
+    max_position = db.query(Task).filter(Task.status == db_task.status).count()
+    db_task.position = max_position
     db.add(db_task)
     db.commit()
     db.refresh(db_task)
+    if db_task.assignee_id != creator_id:
+        create_notification(
+            db,
+            user_id=db_task.assignee_id,
+            type=NotificationType.TASK_ASSIGNED,
+            message=f"Você foi designado para a tarefa \"{db_task.title}\"",
+            task_id=db_task.id,
+        )
     return db_task
+
+
+def move_task(db: Session, task: Task, status: TaskStatus, position: int) -> Task:
+    siblings = (
+        db.query(Task)
+        .filter(Task.status == status, Task.id != task.id)
+        .order_by(Task.position)
+        .all()
+    )
+    siblings.insert(min(position, len(siblings)), task)
+    for index, sibling in enumerate(siblings):
+        sibling.status = status
+        sibling.position = index
+    db.commit()
+    db.refresh(task)
+    return task
 
 
 def update_task(db: Session, task: Task, task_in: TaskUpdate) -> Task:
@@ -59,10 +96,23 @@ def update_task(db: Session, task: Task, task_in: TaskUpdate) -> Task:
         update_data["completed_at"] = datetime.now(timezone.utc)
     elif update_data.get("is_completed") is False:
         update_data["completed_at"] = None
+
+    previous_assignee_id = task.assignee_id
+    new_assignee_id = update_data.get("assignee_id", previous_assignee_id)
+
     for field, value in update_data.items():
         setattr(task, field, value)
     db.commit()
     db.refresh(task)
+
+    if new_assignee_id and new_assignee_id != previous_assignee_id:
+        create_notification(
+            db,
+            user_id=new_assignee_id,
+            type=NotificationType.TASK_ASSIGNED,
+            message=f"Você foi designado para a tarefa \"{task.title}\"",
+            task_id=task.id,
+        )
     return task
 
 

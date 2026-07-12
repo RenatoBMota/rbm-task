@@ -36,6 +36,7 @@ class Task(Base):
     estimated_minutes: Mapped[int | None] = mapped_column(Integer, nullable=True)
     is_completed: Mapped[bool] = mapped_column(Boolean, default=False)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    position: Mapped[int] = mapped_column(Integer, default=0)
 
     project_id: Mapped[int | None] = mapped_column(ForeignKey("projects.id"), nullable=True)
     assignee_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
@@ -54,3 +55,12 @@ class Task(Base):
     assignee: Mapped["User | None"] = relationship("User", back_populates="tasks")
     subtasks: Mapped[list["Task"]] = relationship("Task", back_populates="parent")
     parent: Mapped["Task | None"] = relationship("Task", back_populates="subtasks", remote_side="Task.id")
+    checklist_items: Mapped[list["ChecklistItem"]] = relationship(
+        "ChecklistItem", back_populates="task", cascade="all, delete-orphan", order_by="ChecklistItem.position"
+    )
+    comments: Mapped[list["Comment"]] = relationship(
+        "Comment", back_populates="task", cascade="all, delete-orphan", order_by="Comment.created_at"
+    )
+    attachments: Mapped[list["Attachment"]] = relationship(
+        "Attachment", back_populates="task", cascade="all, delete-orphan"
+    )
