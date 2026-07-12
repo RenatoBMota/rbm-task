@@ -2,15 +2,20 @@
 
 import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Camera, Download, X } from "lucide-react";
+import { format } from "date-fns";
+import { clsx } from "clsx";
 import api from "@/lib/api";
 import { useWorkspaces } from "@/hooks/useWorkspaces";
 import { GanttChart } from "@/components/gantt/GanttChart";
+import { PertChart } from "@/components/gantt/PertChart";
 import { DependencyPopover } from "@/components/gantt/DependencyPopover";
 import { TaskDetailModal } from "@/components/tasks/TaskDetailModal";
 import { QuickAddTaskModal } from "@/components/tasks/QuickAddTaskModal";
-import type { GanttData, DependencyType, DependencyHardness, Project } from "@/lib/types";
+import type { GanttData, DependencyType, DependencyHardness, Project, GanttBaselineSummary, GanttBaseline } from "@/lib/types";
 
 const EMPTY_PROJECTS: Project[] = [];
+const EMPTY_BASELINES: GanttBaselineSummary[] = [];
 
 export default function GanttPage() {
   const qc = useQueryClient();
@@ -19,6 +24,10 @@ export default function GanttPage() {
   const [selectedTaskId, setSelectedTaskId] = useState<number | null>(null);
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [selectedDep, setSelectedDep] = useState<{ id: number; x: number; y: number } | null>(null);
+  const [view, setView] = useState<"gantt" | "pert">("gantt");
+  const [baselineId, setBaselineId] = useState<number | "">("");
+  const [showBaselineForm, setShowBaselineForm] = useState(false);
+  const [baselineName, setBaselineName] = useState("");
 
   const { data: projects = EMPTY_PROJECTS } = useQuery<Project[]>({
     queryKey: ["projects", currentWorkspaceId],
@@ -40,7 +49,53 @@ export default function GanttPage() {
     enabled: !!projectId,
   });
 
+  useEffect(() => {
+    setBaselineId("");
+  }, [projectId]);
+
+  const { data: baselines = EMPTY_BASELINES } = useQuery<GanttBaselineSummary[]>({
+    queryKey: ["baselines", projectId],
+    queryFn: () => api.get(`/projects/${projectId}/baselines`).then((r) => r.data),
+    enabled: !!projectId,
+  });
+
+  const { data: activeBaseline } = useQuery<GanttBaseline>({
+    queryKey: ["baseline", projectId, baselineId],
+    queryFn: () => api.get(`/projects/${projectId}/baselines/${baselineId}`).then((r) => r.data),
+    enabled: !!projectId && baselineId !== "",
+  });
+
   const invalidateGantt = () => qc.invalidateQueries({ queryKey: ["gantt", projectId] });
+
+  const createBaselineMutation = useMutation({
+    mutationFn: (name: string) => api.post(`/projects/${projectId}/baselines`, { name }),
+    onSuccess: (res) => {
+      qc.invalidateQueries({ queryKey: ["baselines", projectId] });
+      setShowBaselineForm(false);
+      setBaselineName("");
+      setBaselineId(res.data.id);
+    },
+  });
+
+  const deleteBaselineMutation = useMutation({
+    mutationFn: (id: number) => api.delete(`/projects/${projectId}/baselines/${id}`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["baselines", projectId] });
+      setBaselineId("");
+    },
+  });
+
+  const handleExportCsv = async () => {
+    const res = await api.get(`/projects/${projectId}/gantt/export.csv`, { responseType: "blob" });
+    const url = window.URL.createObjectURL(new Blob([res.data]));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `gantt-projeto-${projectId}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+  };
 
   const rescheduleMutation = useMutation({
     mutationFn: ({ id, start_date, due_date }: { id: number; start_date: string; due_date: string }) =>
@@ -80,20 +135,95 @@ export default function GanttPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
         <h1 className="text-2xl font-bold text-slate-900">Gantt</h1>
-        <select
-          className="input w-56"
-          value={projectId ?? ""}
-          onChange={(e) => setProjectId(Number(e.target.value))}
-        >
-          {projects.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name}
-            </option>
-          ))}
-        </select>
+        <div className="flex items-center gap-2">
+          <div className="flex rounded-lg border border-surface-200 overflow-hidden text-sm">
+            <button
+              className={clsx("px-3 py-1.5", view === "gantt" ? "bg-primary-600 text-white" : "text-slate-500 hover:bg-surface-50")}
+              onClick={() => setView("gantt")}
+            >
+              Gantt
+            </button>
+            <button
+              className={clsx("px-3 py-1.5", view === "pert" ? "bg-primary-600 text-white" : "text-slate-500 hover:bg-surface-50")}
+              onClick={() => setView("pert")}
+            >
+              PERT
+            </button>
+          </div>
+          <select
+            className="input w-56"
+            value={projectId ?? ""}
+            onChange={(e) => setProjectId(Number(e.target.value))}
+          >
+            {projects.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
+
+      {projectId && (
+        <div className="flex items-center justify-between mb-4 flex-wrap gap-2 text-sm">
+          <div className="flex items-center gap-2">
+            <select
+              className="input w-56 py-1.5"
+              value={baselineId}
+              onChange={(e) => setBaselineId(e.target.value ? Number(e.target.value) : "")}
+            >
+              <option value="">Sem baseline</option>
+              {baselines.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.name} ({format(new Date(b.created_at), "dd/MM/yy")})
+                </option>
+              ))}
+            </select>
+            {baselineId !== "" && (
+              <button
+                className="p-1.5 rounded hover:bg-surface-100 text-slate-400 hover:text-red-500"
+                title="Excluir baseline"
+                onClick={() => deleteBaselineMutation.mutate(baselineId as number)}
+              >
+                <X size={14} />
+              </button>
+            )}
+            {!showBaselineForm ? (
+              <button
+                className="btn-secondary flex items-center gap-1.5 py-1.5"
+                onClick={() => setShowBaselineForm(true)}
+              >
+                <Camera size={14} /> Salvar baseline
+              </button>
+            ) : (
+              <>
+                <input
+                  className="input py-1.5 w-44"
+                  placeholder="Nome da baseline"
+                  value={baselineName}
+                  onChange={(e) => setBaselineName(e.target.value)}
+                  autoFocus
+                />
+                <button
+                  className="btn-primary py-1.5"
+                  disabled={!baselineName || createBaselineMutation.isPending}
+                  onClick={() => createBaselineMutation.mutate(baselineName)}
+                >
+                  Salvar
+                </button>
+                <button className="btn-secondary py-1.5" onClick={() => setShowBaselineForm(false)}>
+                  Cancelar
+                </button>
+              </>
+            )}
+          </div>
+          <button className="btn-secondary flex items-center gap-1.5 py-1.5" onClick={handleExportCsv}>
+            <Download size={14} /> Exportar CSV
+          </button>
+        </div>
+      )}
 
       {!projectId ? (
         <p className="text-slate-400">Crie um projeto para usar o Gantt.</p>
@@ -106,11 +236,19 @@ export default function GanttPage() {
             Criar tarefa
           </button>
         </div>
+      ) : view === "pert" ? (
+        <PertChart
+          tasks={gantt.tasks}
+          dependencies={gantt.dependencies}
+          criticalTaskIds={gantt.critical_task_ids}
+          onTaskClick={setSelectedTaskId}
+        />
       ) : (
         <GanttChart
           tasks={gantt.tasks}
           dependencies={gantt.dependencies}
           criticalTaskIds={gantt.critical_task_ids}
+          baselineTasks={activeBaseline?.tasks}
           onTaskClick={setSelectedTaskId}
           onReschedule={(id, start, due) =>
             rescheduleMutation.mutate({ id, start_date: start.toISOString(), due_date: due.toISOString() })

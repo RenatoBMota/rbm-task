@@ -6,7 +6,7 @@ import { ptBR } from "date-fns/locale";
 import { ZoomIn, ZoomOut, Link2, Plus } from "lucide-react";
 import { clsx } from "clsx";
 import { PRIORITY_COLORS, DEPENDENCY_TYPE_SHORT } from "@/lib/types";
-import type { Task, GanttDependency } from "@/lib/types";
+import type { Task, GanttDependency, GanttBaselineTaskData } from "@/lib/types";
 
 const LEFT_WIDTH = 260;
 const ROW_H = 36;
@@ -83,6 +83,7 @@ export function GanttChart({
   tasks,
   dependencies,
   criticalTaskIds,
+  baselineTasks,
   onTaskClick,
   onReschedule,
   onCreateDependency,
@@ -92,6 +93,7 @@ export function GanttChart({
   tasks: Task[];
   dependencies: GanttDependency[];
   criticalTaskIds: number[];
+  baselineTasks?: GanttBaselineTaskData[] | null;
   onTaskClick: (taskId: number) => void;
   onReschedule: (taskId: number, startDate: Date, dueDate: Date) => void;
   onCreateDependency: (taskId: number, dependsOnId: number) => void;
@@ -125,15 +127,26 @@ export function GanttChart({
 
   const todayOffset = differenceInCalendarDays(startOfDay(new Date()), range.start) * dayWidth;
 
-  const barGeometry = (task: Task) => {
-    if (!task.start_date && !task.due_date) return null;
-    const start = task.start_date ? new Date(task.start_date) : new Date(task.due_date!);
-    const due = task.due_date ? new Date(task.due_date) : new Date(task.start_date!);
+  const geometryForDates = (startStr: string | null, dueStr: string | null, isMilestone = false) => {
+    if (!startStr && !dueStr) return null;
+    const start = startStr ? new Date(startStr) : new Date(dueStr!);
+    const due = dueStr ? new Date(dueStr) : new Date(startStr!);
     const left = differenceInCalendarDays(start, range.start) * dayWidth;
-    const durationDays = task.is_milestone ? 0 : Math.max(differenceInCalendarDays(due, start), 0);
-    const width = task.is_milestone ? dayWidth : Math.max(durationDays * dayWidth, dayWidth * 0.6);
+    const durationDays = isMilestone ? 0 : Math.max(differenceInCalendarDays(due, start), 0);
+    const width = isMilestone ? dayWidth : Math.max(durationDays * dayWidth, dayWidth * 0.6);
     return { left, width, start, due };
   };
+
+  const barGeometry = (task: Task) => geometryForDates(task.start_date, task.due_date, task.is_milestone);
+
+  const baselineByTaskId = useMemo(() => {
+    if (!baselineTasks) return null;
+    const map = new Map<number, GanttBaselineTaskData>();
+    for (const bt of baselineTasks) {
+      if (bt.task_id != null) map.set(bt.task_id, bt);
+    }
+    return map;
+  }, [baselineTasks]);
 
   const handleBarPointerDown = (e: React.PointerEvent, task: Task, mode: DragMode) => {
     e.stopPropagation();
@@ -230,6 +243,11 @@ export function GanttChart({
             />
             Caminho crítico
           </span>
+          {baselineByTaskId && (
+            <span className="flex items-center gap-1">
+              <span className="w-3 h-1 rounded-sm bg-slate-300 inline-block opacity-60" /> Baseline (verde = adiantado, vermelho = atrasado)
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <button className="btn-secondary flex items-center gap-1.5 text-sm py-1.5" onClick={onAddTask}>
@@ -339,6 +357,25 @@ export function GanttChart({
                       style={{ left: todayOffset, height: rows.length * ROW_H }}
                     />
                   )}
+                  {baselineByTaskId && baselineByTaskId.has(row.task.id) && (() => {
+                    const bt = baselineByTaskId.get(row.task.id)!;
+                    const bgeo = geometryForDates(bt.start_date, bt.due_date, row.task.is_milestone);
+                    if (!bgeo) return null;
+                    const baselineDue = bt.due_date ? new Date(bt.due_date) : null;
+                    const currentDue = row.task.due_date ? new Date(row.task.due_date) : null;
+                    const isLate = baselineDue && currentDue && currentDue > baselineDue;
+                    const isEarly = baselineDue && currentDue && currentDue < baselineDue;
+                    return (
+                      <div
+                        className={clsx(
+                          "absolute rounded-sm opacity-60",
+                          isLate ? "bg-red-300" : isEarly ? "bg-green-300" : "bg-slate-300"
+                        )}
+                        style={{ left: bgeo.left, width: bgeo.width, top: 2, height: 4 }}
+                        title={`Baseline: ${format(bgeo.start, "dd/MM")} → ${format(bgeo.due, "dd/MM")}`}
+                      />
+                    );
+                  })()}
                   {geo && row.task.is_milestone && (
                     <div
                       className={clsx(

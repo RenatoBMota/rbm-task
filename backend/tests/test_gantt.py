@@ -118,3 +118,20 @@ def test_gantt_endpoint_includes_subtasks(client):
     response = client.get(f"/api/v1/projects/{project['id']}/gantt", headers=headers)
     task_ids = {t["id"] for t in response.json()["tasks"]}
     assert child["id"] in task_ids
+
+
+def test_gantt_csv_export(client):
+    token = register_and_login(client)
+    headers = auth_headers(token)
+    project = _create_project(client, headers)
+    a = _create_task(client, headers, project["id"], "A")
+    b = _create_task(client, headers, project["id"], "B")
+    client.post(f"/api/v1/tasks/{b['id']}/dependencies", json={"depends_on_id": a["id"]}, headers=headers)
+
+    response = client.get(f"/api/v1/projects/{project['id']}/gantt/export.csv", headers=headers)
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/csv")
+    body = response.text
+    assert "A" in body
+    assert "B" in body
+    assert "finish_start" in body

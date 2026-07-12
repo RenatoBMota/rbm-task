@@ -18,3 +18,4 @@ class GanttData(BaseModel):
     tasks: list[TaskOut]
     dependencies: list[GanttDependency]
     critical_task_ids: list[int]
+    task_costs: dict[int, float] = {}

@@ -12,6 +12,9 @@ from app.crud.task_dependency import (
 )
 from app.crud.label import get_label, attach_label, detach_label
 from app.crud.reminder import get_reminder, get_reminders, create_reminder, delete_reminder
+from app.crud.resource import (
+    get_resource, get_assignment, get_task_assignments, assign_resource, update_assignment, remove_assignment,
+)
 from app.api.access import require_project_member, require_task_access, require_workspace_member
 from app.core.exceptions import TaskBlockedError
 from app.models.user import User
@@ -19,6 +22,7 @@ from app.schemas.task import TaskCreate, TaskUpdate, TaskOut, TaskMove, TaskDupl
 from app.schemas.task_history import TaskHistoryOut
 from app.schemas.task_dependency import TaskDependencyCreate, TaskDependencyUpdate, TaskDependencyOut
 from app.schemas.reminder import ReminderCreate, ReminderOut
+from app.schemas.resource import ResourceAssignmentCreate, ResourceAssignmentUpdate, ResourceAssignmentOut
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
 
@@ -294,6 +298,75 @@ def delete_task_reminder(
     if not reminder or reminder.task_id != task_id:
         raise HTTPException(status_code=404, detail="Lembrete não encontrado")
     delete_reminder(db, reminder)
+
+
+def _assignment_out(a) -> ResourceAssignmentOut:
+    return ResourceAssignmentOut(
+        id=a.id,
+        task_id=a.task_id,
+        resource_id=a.resource_id,
+        resource_name=a.resource.name,
+        standard_rate=a.resource.standard_rate,
+        allocation_percent=a.allocation_percent,
+        is_coordinator=a.is_coordinator,
+    )
+
+
+@router.get("/{task_id}/resources", response_model=list[ResourceAssignmentOut])
+def list_task_resources(
+    task_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    require_task_access(db, task_id, current_user.id)
+    return [_assignment_out(a) for a in get_task_assignments(db, task_id)]
+
+
+@router.post("/{task_id}/resources", response_model=ResourceAssignmentOut, status_code=status.HTTP_201_CREATED)
+def assign_task_resource(
+    task_id: int,
+    assignment_in: ResourceAssignmentCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    require_task_access(db, task_id, current_user.id)
+    resource = get_resource(db, assignment_in.resource_id)
+    if not resource:
+        raise HTTPException(status_code=404, detail="Recurso não encontrado")
+    assignment = assign_resource(
+        db, task_id, assignment_in.resource_id, assignment_in.allocation_percent, assignment_in.is_coordinator
+    )
+    return _assignment_out(assignment)
+
+
+@router.put("/{task_id}/resources/{assignment_id}", response_model=ResourceAssignmentOut)
+def update_task_resource(
+    task_id: int,
+    assignment_id: int,
+    assignment_in: ResourceAssignmentUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    require_task_access(db, task_id, current_user.id)
+    assignment = get_assignment(db, assignment_id)
+    if not assignment or assignment.task_id != task_id:
+        raise HTTPException(status_code=404, detail="Atribuição não encontrada")
+    assignment = update_assignment(db, assignment, assignment_in.allocation_percent, assignment_in.is_coordinator)
+    return _assignment_out(assignment)
+
+
+@router.delete("/{task_id}/resources/{assignment_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_task_resource(
+    task_id: int,
+    assignment_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    require_task_access(db, task_id, current_user.id)
+    assignment = get_assignment(db, assignment_id)
+    if not assignment or assignment.task_id != task_id:
+        raise HTTPException(status_code=404, detail="Atribuição não encontrada")
+    remove_assignment(db, assignment)
 
 
 @router.delete("/{task_id}", status_code=status.HTTP_204_NO_CONTENT)

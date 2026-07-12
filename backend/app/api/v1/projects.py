@@ -1,4 +1,7 @@
+import csv
+from io import StringIO
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.api.deps import get_current_user
@@ -7,6 +10,7 @@ from app.crud.project import (
 )
 from app.crud.task import get_all_project_tasks
 from app.crud.workspace import get_member
+from app.crud.resource import task_cost
 from app.core.critical_path import compute_critical_path
 from app.models.user import User
 from app.models.task_dependency import TaskDependency
@@ -118,4 +122,60 @@ def get_gantt(
         tasks=tasks,
         dependencies=[GanttDependency.model_validate(d) for d in dependencies],
         critical_task_ids=sorted(critical_ids),
+        task_costs={t.id: task_cost(t) for t in tasks},
+    )
+
+
+@router.get("/{project_id}/gantt/export.csv")
+def export_gantt_csv(
+    project_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    project = _get_project_with_access(db, project_id, current_user.id)
+    tasks = get_all_project_tasks(db, project_id)
+    task_ids = [t.id for t in tasks]
+    dependencies = (
+        db.query(TaskDependency)
+        .filter(TaskDependency.task_id.in_(task_ids), TaskDependency.depends_on_id.in_(task_ids))
+        .all()
+        if task_ids
+        else []
+    )
+    critical_ids = compute_critical_path(tasks, dependencies)
+    deps_by_task: dict[int, list[str]] = {}
+    for dep in dependencies:
+        deps_by_task.setdefault(dep.task_id, []).append(
+            f"{dep.depends_on.title} ({dep.dependency_type.value})"
+        )
+
+    buffer = StringIO()
+    writer = csv.writer(buffer)
+    writer.writerow([
+        "ID", "Tarefa", "Início", "Fim", "Duração (dias)", "Prioridade", "Status",
+        "Marco", "Caminho crítico", "Custo", "Dependências",
+    ])
+    for task in tasks:
+        duration = (
+            (task.due_date - task.start_date).days if task.start_date and task.due_date else ""
+        )
+        writer.writerow([
+            task.id,
+            task.title,
+            task.start_date.strftime("%d/%m/%Y") if task.start_date else "",
+            task.due_date.strftime("%d/%m/%Y") if task.due_date else "",
+            duration,
+            task.priority.value,
+            task.status.value,
+            "Sim" if task.is_milestone else "Não",
+            "Sim" if task.id in critical_ids else "Não",
+            task_cost(task),
+            "; ".join(deps_by_task.get(task.id, [])),
+        ])
+    buffer.seek(0)
+    filename = f"gantt-{project.name}.csv".replace(" ", "-")
+    return StreamingResponse(
+        iter([buffer.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
     )

@@ -23,8 +23,10 @@ import {
   ArchiveRestore,
   Share2,
   FolderInput,
+  Users2,
+  Coins,
 } from "lucide-react";
-import { format, addDays, startOfDay } from "date-fns";
+import { format, addDays, startOfDay, differenceInCalendarDays } from "date-fns";
 import { clsx } from "clsx";
 import api from "@/lib/api";
 import { PRIORITY_COLORS, TASK_STATUSES } from "@/lib/types";
@@ -35,6 +37,8 @@ import type {
   Attachment,
   Project,
   WorkspaceMember,
+  Resource,
+  ResourceAssignment,
   TaskPriority,
   TaskRecurrence,
   TaskStatus,
@@ -47,6 +51,8 @@ import { Chip } from "@/components/tasks/Chip";
 
 const EMPTY_MEMBERS: WorkspaceMember[] = [];
 const EMPTY_PROJECTS: Project[] = [];
+const EMPTY_RESOURCES: Resource[] = [];
+const EMPTY_ASSIGNMENTS: ResourceAssignment[] = [];
 
 function toLocalInputValue(date: Date) {
   return format(date, "yyyy-MM-dd'T'HH:mm");
@@ -142,6 +148,17 @@ export function TaskDetailModal({ taskId, onClose }: { taskId: number; onClose: 
 
   const { labels, createLabel } = useLabels();
 
+  const { data: workspaceResources = EMPTY_RESOURCES } = useQuery<Resource[]>({
+    queryKey: ["resources", effectiveWorkspaceId],
+    queryFn: () => api.get(`/workspaces/${effectiveWorkspaceId}/resources`).then((r) => r.data),
+    enabled: !!effectiveWorkspaceId,
+  });
+
+  const { data: taskResources = EMPTY_ASSIGNMENTS } = useQuery<ResourceAssignment[]>({
+    queryKey: ["task", taskId, "resources"],
+    queryFn: () => api.get(`/tasks/${taskId}/resources`).then((r) => r.data),
+  });
+
   const invalidate = (key: string) => qc.invalidateQueries({ queryKey: ["task", taskId, key] });
   const invalidateTask = () => {
     qc.invalidateQueries({ queryKey: ["task", taskId] });
@@ -174,6 +191,22 @@ export function TaskDetailModal({ taskId, onClose }: { taskId: number; onClose: 
   const detachLabel = useMutation({
     mutationFn: (labelId: number) => api.delete(`/tasks/${taskId}/labels/${labelId}`),
     onSuccess: invalidateTask,
+  });
+
+  const assignResource = useMutation({
+    mutationFn: (resourceId: number) => api.post(`/tasks/${taskId}/resources`, { resource_id: resourceId }),
+    onSuccess: () => invalidate("resources"),
+  });
+
+  const updateResourceAssignment = useMutation({
+    mutationFn: ({ id, allocation_percent }: { id: number; allocation_percent: number }) =>
+      api.put(`/tasks/${taskId}/resources/${id}`, { allocation_percent }),
+    onSuccess: () => invalidate("resources"),
+  });
+
+  const removeResourceAssignment = useMutation({
+    mutationFn: (id: number) => api.delete(`/tasks/${taskId}/resources/${id}`),
+    onSuccess: () => invalidate("resources"),
   });
 
   const addChecklistItem = useMutation({
@@ -226,6 +259,18 @@ export function TaskDetailModal({ taskId, onClose }: { taskId: number; onClose: 
 
   const completedCount = checklist.filter((c) => c.is_completed).length;
   const toggleProp = (key: Exclude<PropKey, null>) => setOpenProp((p) => (p === key ? null : key));
+
+  const taskDurationDays =
+    task?.start_date && task?.due_date && !task.is_milestone
+      ? Math.max(differenceInCalendarDays(new Date(task.due_date), new Date(task.start_date)), 1)
+      : 0;
+  const totalResourceCost = taskResources.reduce(
+    (sum, a) => sum + taskDurationDays * a.standard_rate * (a.allocation_percent / 100),
+    0
+  );
+  const unassignedResources = workspaceResources.filter(
+    (r) => !taskResources.some((a) => a.resource_id === r.id)
+  );
 
   const saveTitle = () => {
     setEditingTitle(false);
@@ -726,6 +771,64 @@ export function TaskDetailModal({ taskId, onClose }: { taskId: number; onClose: 
               >
                 {task?.description || "Adicionar descrição..."}
               </p>
+            )}
+          </section>
+
+          <section>
+            <h3 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
+              <Users2 size={14} /> Recursos {taskResources.length > 0 && `(${taskResources.length})`}
+              {totalResourceCost > 0 && (
+                <span className="text-xs font-normal text-slate-400 flex items-center gap-1 ml-auto">
+                  <Coins size={12} /> R$ {totalResourceCost.toFixed(2)}
+                </span>
+              )}
+            </h3>
+            {taskResources.length === 0 ? (
+              <p className="text-sm text-slate-400 mb-2">Nenhum recurso atribuído.</p>
+            ) : (
+              <div className="space-y-2 mb-3">
+                {taskResources.map((a) => (
+                  <div key={a.id} className="flex items-center gap-2 text-sm">
+                    <span className="w-6 h-6 rounded-full bg-primary-100 text-primary-700 flex items-center justify-center text-xs font-semibold flex-shrink-0">
+                      {a.resource_name.charAt(0).toUpperCase()}
+                    </span>
+                    <span className="flex-1 truncate">{a.resource_name}</span>
+                    <input
+                      type="number"
+                      min={0}
+                      max={200}
+                      className="input w-16 text-xs py-1"
+                      value={a.allocation_percent}
+                      onChange={(e) =>
+                        updateResourceAssignment.mutate({ id: a.id, allocation_percent: Number(e.target.value) })
+                      }
+                    />
+                    <span className="text-xs text-slate-400">%</span>
+                    <button
+                      onClick={() => removeResourceAssignment.mutate(a.id)}
+                      className="text-slate-300 hover:text-red-500 p-1"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            {unassignedResources.length > 0 && (
+              <select
+                className="input text-sm"
+                value=""
+                onChange={(e) => {
+                  if (e.target.value) assignResource.mutate(Number(e.target.value));
+                }}
+              >
+                <option value="">+ Atribuir recurso...</option>
+                {unassignedResources.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {r.name}
+                  </option>
+                ))}
+              </select>
             )}
           </section>
 

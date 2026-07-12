@@ -12,3 +12,5 @@ from app.models.task_history import TaskHistory
 from app.models.task_dependency import TaskDependency
 from app.models.label import Label, task_labels
 from app.models.reminder import Reminder
+from app.models.resource import Resource, ResourceAssignment
+from app.models.baseline import GanttBaseline, GanttBaselineTask

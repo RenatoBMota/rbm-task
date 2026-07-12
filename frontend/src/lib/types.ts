@@ -50,6 +50,51 @@ export interface GanttData {
   tasks: Task[];
   dependencies: GanttDependency[];
   critical_task_ids: number[];
+  task_costs: Record<string, number>;
+}
+
+export interface Resource {
+  id: number;
+  name: string;
+  role: string | null;
+  email: string | null;
+  standard_rate: number;
+  workspace_id: number;
+}
+
+export interface ResourceAssignment {
+  id: number;
+  task_id: number;
+  resource_id: number;
+  resource_name: string;
+  standard_rate: number;
+  allocation_percent: number;
+  is_coordinator: boolean;
+}
+
+export interface ResourceUtilization {
+  resource_id: number;
+  resource_name: string;
+  total_allocation_percent: number;
+  task_count: number;
+}
+
+export interface GanttBaselineTaskData {
+  task_id: number | null;
+  title: string;
+  start_date: string | null;
+  due_date: string | null;
+}
+
+export interface GanttBaselineSummary {
+  id: number;
+  project_id: number;
+  name: string;
+  created_at: string;
+}
+
+export interface GanttBaseline extends GanttBaselineSummary {
+  tasks: GanttBaselineTaskData[];
 }
 
 export interface Project {

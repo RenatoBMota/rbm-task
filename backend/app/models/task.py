@@ -89,3 +89,6 @@ class Task(Base):
     reminders: Mapped[list["Reminder"]] = relationship(
         "Reminder", back_populates="task", cascade="all, delete-orphan", order_by="Reminder.remind_at"
     )
+    resource_assignments: Mapped[list["ResourceAssignment"]] = relationship(
+        "ResourceAssignment", back_populates="task", cascade="all, delete-orphan"
+    )
