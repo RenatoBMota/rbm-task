@@ -1,13 +1,11 @@
 from datetime import datetime, timedelta, timezone
 from app.core import scheduler as scheduler_module
 from app.models.notification import Notification
-from tests.conftest import register_and_login, auth_headers, get_default_workspace_id
+from tests.conftest import register_and_login, auth_headers, get_default_workspace_id, create_project
 
 
 def _create_project(client, headers, workspace_id, name="P"):
-    return client.post(
-        "/api/v1/projects", json={"name": name, "workspace_id": workspace_id}, headers=headers
-    ).json()
+    return create_project(client, headers, workspace_id, name=name)
 
 
 def test_overload_alert_created_once_per_cooldown(client, db_session, monkeypatch):

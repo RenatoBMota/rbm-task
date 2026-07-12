@@ -1,11 +1,9 @@
 from datetime import datetime, timedelta, timezone
-from tests.conftest import register_and_login, auth_headers, get_default_workspace_id
+from tests.conftest import register_and_login, auth_headers, get_default_workspace_id, create_project
 
 
 def _create_project(client, headers, workspace_id, name="P"):
-    return client.post(
-        "/api/v1/projects", json={"name": name, "workspace_id": workspace_id}, headers=headers
-    ).json()
+    return create_project(client, headers, workspace_id, name=name)
 
 
 def test_create_and_list_resources(client):
@@ -94,7 +92,7 @@ def test_gantt_task_cost_reflects_duration_rate_and_allocation(client):
         headers=headers,
     ).json()
 
-    base = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    base = datetime.now(timezone.utc) + timedelta(days=1)
     task = client.post(
         "/api/v1/tasks",
         json={

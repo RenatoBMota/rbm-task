@@ -3,6 +3,7 @@ import os
 os.environ.setdefault("DATABASE_URL", "sqlite://")
 os.environ.setdefault("SECRET_KEY", "test-secret-key")
 
+from datetime import datetime, timedelta, timezone
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -55,3 +56,17 @@ def auth_headers(token: str) -> dict:
 def get_default_workspace_id(client: TestClient, headers: dict) -> int:
     workspaces = client.get("/api/v1/workspaces", headers=headers).json()
     return workspaces[0]["id"]
+
+
+def create_project(client: TestClient, headers: dict, workspace_id: int, name: str = "P", **overrides) -> dict:
+    # Wide default window so incidental "yesterday"/"next week" task dates used
+    # across tests comfortably fall inside the project's required date range.
+    now = datetime.now(timezone.utc)
+    payload = {
+        "name": name,
+        "workspace_id": workspace_id,
+        "start_date": (now - timedelta(days=60)).isoformat(),
+        "end_date": (now + timedelta(days=180)).isoformat(),
+        **overrides,
+    }
+    return client.post("/api/v1/projects", json=payload, headers=headers).json()

@@ -2,18 +2,47 @@
 
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Folder, Trash2, Archive, ArchiveRestore, Copy } from "lucide-react";
+import { Plus, Folder, Trash2, Archive, ArchiveRestore, Copy, Pencil, Calendar } from "lucide-react";
 import { clsx } from "clsx";
+import { format } from "date-fns";
 import api from "@/lib/api";
 import { useWorkspaces } from "@/hooks/useWorkspaces";
 import type { Project } from "@/lib/types";
+
+interface ProjectFormState {
+  name: string;
+  description: string;
+  start_date: string;
+  end_date: string;
+  color: string;
+  is_template: boolean;
+}
+
+const EMPTY_FORM: ProjectFormState = {
+  name: "",
+  description: "",
+  start_date: "",
+  end_date: "",
+  color: "#6366f1",
+  is_template: false,
+};
+
+function toDateInputValue(iso: string) {
+  return format(new Date(iso), "yyyy-MM-dd");
+}
+
+function errorDetail(err: unknown): string | undefined {
+  return (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+}
 
 export default function ProjectsPage() {
   const qc = useQueryClient();
   const { currentWorkspaceId } = useWorkspaces();
   const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
   const [showArchived, setShowArchived] = useState(false);
-  const [form, setForm] = useState({ name: "", description: "", color: "#6366f1", is_template: false });
+  const [form, setForm] = useState<ProjectFormState>(EMPTY_FORM);
+  const [formError, setFormError] = useState("");
 
   const { data: projects = [], isLoading } = useQuery<Project[]>({
     queryKey: ["projects", currentWorkspaceId, showArchived],
@@ -24,13 +53,54 @@ export default function ProjectsPage() {
     enabled: !!currentWorkspaceId,
   });
 
+  const closeForm = () => {
+    setShowForm(false);
+    setEditingId(null);
+    setForm(EMPTY_FORM);
+    setFormError("");
+  };
+
+  const startEdit = (p: Project) => {
+    setEditingId(p.id);
+    setForm({
+      name: p.name,
+      description: p.description ?? "",
+      start_date: toDateInputValue(p.start_date),
+      end_date: toDateInputValue(p.end_date),
+      color: p.color,
+      is_template: p.is_template,
+    });
+    setFormError("");
+    setShowForm(true);
+  };
+
   const createMutation = useMutation({
-    mutationFn: (data: typeof form) => api.post("/projects", { ...data, workspace_id: currentWorkspaceId }),
+    mutationFn: (data: ProjectFormState) =>
+      api.post("/projects", {
+        ...data,
+        start_date: new Date(data.start_date).toISOString(),
+        end_date: new Date(data.end_date).toISOString(),
+        workspace_id: currentWorkspaceId,
+      }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["projects", currentWorkspaceId] });
-      setShowForm(false);
-      setForm({ name: "", description: "", color: "#6366f1", is_template: false });
+      closeForm();
     },
+    onError: (err) => setFormError(errorDetail(err) || "Não foi possível criar o projeto."),
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: ProjectFormState }) =>
+      api.put(`/projects/${id}`, {
+        ...data,
+        start_date: new Date(data.start_date).toISOString(),
+        end_date: new Date(data.end_date).toISOString(),
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["projects", currentWorkspaceId] });
+      closeForm();
+    },
+    onError: (err) => setFormError(errorDetail(err) || "Não foi possível salvar as alterações."),
   });
 
   const archiveMutation = useMutation({
@@ -49,6 +119,21 @@ export default function ProjectsPage() {
     mutationFn: (id: number) => api.delete(`/projects/${id}`),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["projects", currentWorkspaceId] }),
   });
+
+  const datesValid =
+    !!form.start_date && !!form.end_date && new Date(form.end_date) >= new Date(form.start_date);
+  const canSubmit = !!form.name && datesValid;
+
+  const submit = () => {
+    setFormError("");
+    if (editingId) {
+      updateMutation.mutate({ id: editingId, data: form });
+    } else {
+      createMutation.mutate(form);
+    }
+  };
+
+  const isSaving = createMutation.isPending || updateMutation.isPending;
 
   return (
     <div>
@@ -71,7 +156,7 @@ export default function ProjectsPage() {
 
       {showForm && (
         <div className="card p-6 mb-6">
-          <h2 className="font-semibold mb-4">Novo Projeto</h2>
+          <h2 className="font-semibold mb-4">{editingId ? "Editar Projeto" : "Novo Projeto"}</h2>
           <div className="space-y-3">
             <input
               className="input"
@@ -85,6 +170,31 @@ export default function ProjectsPage() {
               value={form.description}
               onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
             />
+            <div className="flex items-center gap-4 flex-wrap">
+              <div className="flex items-center gap-2">
+                <label className="text-sm text-slate-600 flex items-center gap-1">
+                  <Calendar size={14} /> Início:
+                </label>
+                <input
+                  type="date"
+                  className="input py-1.5 w-40"
+                  value={form.start_date}
+                  onChange={(e) => setForm((p) => ({ ...p, start_date: e.target.value }))}
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <label className="text-sm text-slate-600">Fim:</label>
+                <input
+                  type="date"
+                  className="input py-1.5 w-40"
+                  value={form.end_date}
+                  onChange={(e) => setForm((p) => ({ ...p, end_date: e.target.value }))}
+                />
+              </div>
+            </div>
+            {form.start_date && form.end_date && !datesValid && (
+              <p className="text-xs text-red-500">A data de fim não pode ser anterior à data de início.</p>
+            )}
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
                 <label className="text-sm text-slate-600">Cor:</label>
@@ -95,24 +205,25 @@ export default function ProjectsPage() {
                   className="w-8 h-8 rounded cursor-pointer"
                 />
               </div>
-              <label className="flex items-center gap-2 text-sm text-slate-600">
-                <input
-                  type="checkbox"
-                  checked={form.is_template}
-                  onChange={(e) => setForm((p) => ({ ...p, is_template: e.target.checked }))}
-                />
-                Salvar como template
-              </label>
+              {!editingId && (
+                <label className="flex items-center gap-2 text-sm text-slate-600">
+                  <input
+                    type="checkbox"
+                    checked={form.is_template}
+                    onChange={(e) => setForm((p) => ({ ...p, is_template: e.target.checked }))}
+                  />
+                  Salvar como template
+                </label>
+              )}
             </div>
+            {formError && (
+              <p className="text-xs text-red-600 bg-red-50 px-3 py-2 rounded-lg">{formError}</p>
+            )}
             <div className="flex gap-2">
-              <button
-                className="btn-primary"
-                onClick={() => createMutation.mutate(form)}
-                disabled={!form.name || createMutation.isPending}
-              >
-                {createMutation.isPending ? "Criando..." : "Criar"}
+              <button className="btn-primary" onClick={submit} disabled={!canSubmit || isSaving}>
+                {isSaving ? "Salvando..." : editingId ? "Salvar" : "Criar"}
               </button>
-              <button className="btn-secondary" onClick={() => setShowForm(false)}>
+              <button className="btn-secondary" onClick={closeForm}>
                 Cancelar
               </button>
             </div>
@@ -154,9 +265,20 @@ export default function ProjectsPage() {
                     {p.description && (
                       <p className="text-xs text-slate-500 mt-0.5 line-clamp-1">{p.description}</p>
                     )}
+                    <p className="text-xs text-slate-400 mt-1 flex items-center gap-1">
+                      <Calendar size={11} />
+                      {format(new Date(p.start_date), "dd/MM/yy")} – {format(new Date(p.end_date), "dd/MM/yy")}
+                    </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-1 flex-shrink-0">
+                  <button
+                    title="Editar"
+                    onClick={() => startEdit(p)}
+                    className="text-slate-300 hover:text-primary-600 transition-colors p-1"
+                  >
+                    <Pencil size={15} />
+                  </button>
                   <button
                     title="Duplicar"
                     onClick={() => duplicateMutation.mutate({ id: p.id, name: `${p.name} (cópia)` })}

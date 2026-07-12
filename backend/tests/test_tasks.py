@@ -1,11 +1,10 @@
-from tests.conftest import register_and_login, auth_headers, get_default_workspace_id
+from datetime import datetime, timedelta, timezone
+from tests.conftest import register_and_login, auth_headers, get_default_workspace_id, create_project
 
 
 def _create_project(client, headers, name="Projeto"):
     workspace_id = get_default_workspace_id(client, headers)
-    return client.post(
-        "/api/v1/projects", json={"name": name, "workspace_id": workspace_id}, headers=headers
-    ).json()
+    return create_project(client, headers, workspace_id, name=name)
 
 
 def test_create_task_defaults_to_creator(client):
@@ -28,9 +27,10 @@ def test_list_today_and_overdue(client):
     headers = auth_headers(token)
     project = _create_project(client, headers)
 
+    overdue_date = datetime.now(timezone.utc) - timedelta(days=1)
     client.post(
         "/api/v1/tasks",
-        json={"title": "Atrasada", "project_id": project["id"], "due_date": "2000-01-01T00:00:00Z"},
+        json={"title": "Atrasada", "project_id": project["id"], "due_date": overdue_date.isoformat()},
         headers=headers,
     )
 
@@ -79,6 +79,21 @@ def test_move_task_updates_status_and_board_order(client):
     statuses = {t["id"]: t["status"] for t in board}
     assert statuses[task_a["id"]] == "in_progress"
     assert statuses[task_b["id"]] == "todo"
+
+
+def test_board_without_project_returns_standalone_tasks_for_current_user(client):
+    token_a = register_and_login(client, email="a@rbm.com")
+    headers_a = auth_headers(token_a)
+    token_b = register_and_login(client, email="b@rbm.com")
+    headers_b = auth_headers(token_b)
+
+    client.post("/api/v1/tasks", json={"title": "Agenda A"}, headers=headers_a)
+    client.post("/api/v1/tasks", json={"title": "Agenda B"}, headers=headers_b)
+
+    board = client.get("/api/v1/tasks/board", headers=headers_a)
+    assert board.status_code == 200
+    titles = [t["title"] for t in board.json()]
+    assert titles == ["Agenda A"]
 
 
 def test_subtasks_listed_under_parent(client):
@@ -160,9 +175,7 @@ def test_list_tasks_scoped_to_workspace_includes_personal_tasks(client):
     workspace_b = client.post(
         "/api/v1/workspaces", json={"name": "Segunda área"}, headers=headers
     ).json()["id"]
-    project_b = client.post(
-        "/api/v1/projects", json={"name": "Projeto B", "workspace_id": workspace_b}, headers=headers
-    ).json()
+    project_b = create_project(client, headers, workspace_b, name="Projeto B")
 
     client.post("/api/v1/tasks", json={"title": "Tarefa A", "project_id": project_a["id"]}, headers=headers)
     client.post("/api/v1/tasks", json={"title": "Tarefa B", "project_id": project_b["id"]}, headers=headers)

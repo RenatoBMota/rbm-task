@@ -10,10 +10,31 @@ from app.crud.notification import create_notification
 from app.crud.task_history import record_change
 from app.crud.task_dependency import blocking_dependencies
 from app.core.automation_engine import evaluate_and_run
-from app.core.exceptions import TaskBlockedError
+from app.core.exceptions import TaskBlockedError, TaskDateRangeError
 from app.schemas.task import TaskCreate, TaskUpdate
 
 BLOCKING_STATUSES = {TaskStatus.IN_PROGRESS, TaskStatus.IN_REVIEW, TaskStatus.DONE}
+
+
+def _aware(dt: datetime) -> datetime:
+    return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
+
+
+def _validate_task_dates_in_project(
+    db: Session, project_id: int | None, start_date: datetime | None, due_date: datetime | None
+) -> None:
+    if not project_id:
+        return
+    project = db.query(Project).filter(Project.id == project_id).first()
+    if not project:
+        return
+    p_start, p_end = _aware(project.start_date), _aware(project.end_date)
+    for label, value in (("início", start_date), ("prazo", due_date)):
+        if value and not (p_start <= _aware(value) <= p_end):
+            raise TaskDateRangeError(
+                f"A data de {label} da tarefa precisa estar dentro do período do projeto "
+                f'"{project.name}" ({p_start.strftime("%d/%m/%Y")} a {p_end.strftime("%d/%m/%Y")}).'
+            )
 
 
 def _add_months(dt: datetime, months: int = 1) -> datetime:
@@ -116,6 +137,15 @@ def get_board_tasks(db: Session, project_id: int) -> list[Task]:
     )
 
 
+def get_standalone_board_tasks(db: Session, user_id: int) -> list[Task]:
+    return (
+        db.query(Task)
+        .filter(Task.project_id == None, Task.assignee_id == user_id, Task.parent_id == None)
+        .order_by(Task.status, Task.position)
+        .all()
+    )
+
+
 def get_all_project_tasks(db: Session, project_id: int) -> list[Task]:
     return (
         db.query(Task)
@@ -136,6 +166,7 @@ def get_overdue_tasks(db: Session, user_id: int, workspace_id: int | None = None
 
 
 def create_task(db: Session, task_in: TaskCreate, creator_id: int) -> Task:
+    _validate_task_dates_in_project(db, task_in.project_id, task_in.start_date, task_in.due_date)
     db_task = Task(**task_in.model_dump())
     if not db_task.assignee_id:
         db_task.assignee_id = creator_id
@@ -200,6 +231,14 @@ def update_task(db: Session, task: Task, task_in: TaskUpdate, changed_by_id: int
     previous_priority = task.priority
     previous_due_date = task.due_date
     new_assignee_id = update_data.get("assignee_id", previous_assignee_id)
+
+    if "start_date" in update_data or "due_date" in update_data or "project_id" in update_data:
+        _validate_task_dates_in_project(
+            db,
+            update_data.get("project_id", task.project_id),
+            update_data.get("start_date", task.start_date),
+            update_data.get("due_date", task.due_date),
+        )
 
     for field, value in update_data.items():
         setattr(task, field, value)

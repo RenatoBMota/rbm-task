@@ -438,7 +438,7 @@ export function QuickAddTaskModal({
             value={projectId ?? ""}
             onChange={(e) => setProjectId(e.target.value ? Number(e.target.value) : null)}
           >
-            <option value="">Sem projeto</option>
+            <option value="">📅 Agenda diária (sem projeto)</option>
             {projects.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.name}
@@ -455,7 +455,10 @@ export function QuickAddTaskModal({
               </button>
             </div>
             {createTask.isError && (
-              <p className="text-xs text-red-500">Não foi possível salvar a tarefa. Tente novamente.</p>
+              <p className="text-xs text-red-500">
+                {(createTask.error as { response?: { data?: { detail?: string } } })?.response?.data?.detail ||
+                  "Não foi possível salvar a tarefa. Tente novamente."}
+              </p>
             )}
           </div>
         </div>

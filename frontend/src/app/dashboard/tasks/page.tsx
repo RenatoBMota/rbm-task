@@ -166,6 +166,11 @@ function TaskGroup({
             <span className={clsx("flex-1 text-sm", t.is_completed && "line-through text-slate-400")}>
               {t.title}
             </span>
+            {t.project_id === null && (
+              <span className="text-xs font-normal px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 flex-shrink-0">
+                📅 Agenda diária
+              </span>
+            )}
             {t.due_date && (
               <span className="text-xs text-slate-400">
                 {new Date(t.due_date).toLocaleDateString("pt-BR")}

@@ -101,6 +101,8 @@ export interface Project {
   id: number;
   name: string;
   description: string | null;
+  start_date: string;
+  end_date: string;
   color: string;
   icon: string;
   is_archived: boolean;

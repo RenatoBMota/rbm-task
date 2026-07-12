@@ -1,22 +1,22 @@
-from tests.conftest import register_and_login, auth_headers, get_default_workspace_id
+from datetime import datetime, timedelta, timezone
+from tests.conftest import register_and_login, auth_headers, get_default_workspace_id, create_project
 
 
 def _create_project(client, headers, name="P"):
     workspace_id = get_default_workspace_id(client, headers)
-    return client.post(
-        "/api/v1/projects", json={"name": name, "workspace_id": workspace_id}, headers=headers
-    ).json()
+    return create_project(client, headers, workspace_id, name=name)
 
 
 def test_completing_recurring_task_creates_next_occurrence(client):
     token = register_and_login(client)
     headers = auth_headers(token)
     project = _create_project(client, headers)
+    due_date = datetime.now(timezone.utc) + timedelta(days=5)
     task = client.post(
         "/api/v1/tasks",
         json={
             "title": "Reunião semanal", "project_id": project["id"],
-            "due_date": "2026-01-05T10:00:00Z", "recurrence": "weekly",
+            "due_date": due_date.isoformat(), "recurrence": "weekly",
         },
         headers=headers,
     ).json()
@@ -29,7 +29,8 @@ def test_completing_recurring_task_creates_next_occurrence(client):
     titles = [t["title"] for t in all_tasks]
     assert titles.count("Reunião semanal") == 2
     next_occurrence = next(t for t in all_tasks if not t["is_completed"])
-    assert next_occurrence["due_date"].startswith("2026-01-12")
+    next_due = due_date + timedelta(weeks=1)
+    assert next_occurrence["due_date"].startswith(next_due.date().isoformat())
 
 
 def test_task_history_records_status_change(client):

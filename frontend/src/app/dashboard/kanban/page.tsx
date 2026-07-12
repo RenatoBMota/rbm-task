@@ -39,9 +39,12 @@ function groupByStatus(tasks: Task[]): Record<TaskStatus, Task[]> {
   return grouped;
 }
 
+const AGENDA = "agenda" as const;
+type BoardSelection = number | typeof AGENDA | null;
+
 export default function KanbanPage() {
   const qc = useQueryClient();
-  const [projectId, setProjectId] = useState<number | null>(null);
+  const [projectId, setProjectId] = useState<BoardSelection>(null);
   const [columns, setColumns] = useState<Record<TaskStatus, Task[]>>(groupByStatus([]));
   const [activeTask, setActiveTask] = useState<Task | null>(null);
   const [selectedTaskId, setSelectedTaskId] = useState<number | null>(null);
@@ -67,8 +70,11 @@ export default function KanbanPage() {
 
   const { data: tasks = EMPTY_TASKS } = useQuery<Task[]>({
     queryKey: ["tasks", "board", projectId],
-    queryFn: () => api.get("/tasks/board", { params: { project_id: projectId } }).then((r) => r.data),
-    enabled: !!projectId,
+    queryFn: () =>
+      api
+        .get("/tasks/board", { params: projectId === AGENDA ? {} : { project_id: projectId } })
+        .then((r) => r.data),
+    enabled: projectId !== null,
   });
 
   useEffect(() => {
@@ -133,15 +139,16 @@ export default function KanbanPage() {
           <select
             className="input w-56"
             value={projectId ?? ""}
-            onChange={(e) => setProjectId(Number(e.target.value))}
+            onChange={(e) => setProjectId(e.target.value === AGENDA ? AGENDA : Number(e.target.value))}
           >
+            <option value={AGENDA}>📅 Agenda diária (sem projeto)</option>
             {projects.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.name}
               </option>
             ))}
           </select>
-          {projectId && (
+          {projectId !== null && (
             <button
               className="btn-primary flex items-center gap-2"
               onClick={() => setQuickAddStatus("todo")}
@@ -152,8 +159,8 @@ export default function KanbanPage() {
         </div>
       </div>
 
-      {!projectId ? (
-        <p className="text-slate-400">Crie um projeto para usar o quadro Kanban.</p>
+      {projectId === null ? (
+        <p className="text-slate-400">Selecione um projeto ou a Agenda diária para usar o quadro Kanban.</p>
       ) : (
         <DndContext
           sensors={sensors}
@@ -186,7 +193,7 @@ export default function KanbanPage() {
       {quickAddStatus && (
         <QuickAddTaskModal
           projects={projects}
-          defaultProjectId={projectId}
+          defaultProjectId={typeof projectId === "number" ? projectId : null}
           defaultStatus={quickAddStatus}
           onClose={() => setQuickAddStatus(null)}
         />

@@ -1,11 +1,9 @@
 from datetime import datetime, timedelta, timezone
-from tests.conftest import register_and_login, auth_headers, get_default_workspace_id
+from tests.conftest import register_and_login, auth_headers, get_default_workspace_id, create_project
 
 
 def _create_project(client, headers, workspace_id, name="P"):
-    return client.post(
-        "/api/v1/projects", json={"name": name, "workspace_id": workspace_id}, headers=headers
-    ).json()
+    return create_project(client, headers, workspace_id, name=name)
 
 
 def test_workload_requires_workspace_membership(client):

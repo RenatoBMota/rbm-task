@@ -1,4 +1,4 @@
-from tests.conftest import register_and_login, auth_headers, get_default_workspace_id
+from tests.conftest import register_and_login, auth_headers, get_default_workspace_id, create_project
 
 
 def test_default_sla_policies_returned(client):
@@ -33,9 +33,7 @@ def test_task_sla_status_on_time_without_due_date(client):
     token = register_and_login(client)
     headers = auth_headers(token)
     workspace_id = get_default_workspace_id(client, headers)
-    project = client.post(
-        "/api/v1/projects", json={"name": "P", "workspace_id": workspace_id}, headers=headers
-    ).json()
+    project = create_project(client, headers, workspace_id)
     task = client.post(
         "/api/v1/tasks", json={"title": "T", "project_id": project["id"]}, headers=headers
     ).json()

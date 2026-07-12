@@ -1,13 +1,11 @@
-from tests.conftest import register_and_login, auth_headers, get_default_workspace_id
+from tests.conftest import register_and_login, auth_headers, get_default_workspace_id, create_project
 
 
 def test_automation_rule_fires_notify_and_comment_on_task_created(client):
     token = register_and_login(client)
     headers = auth_headers(token)
     workspace_id = get_default_workspace_id(client, headers)
-    project = client.post(
-        "/api/v1/projects", json={"name": "P", "workspace_id": workspace_id}, headers=headers
-    ).json()
+    project = create_project(client, headers, workspace_id)
 
     rule = client.post(
         "/api/v1/automations",
@@ -46,9 +44,7 @@ def test_automation_rule_does_not_fire_when_condition_mismatches(client):
     token = register_and_login(client)
     headers = auth_headers(token)
     workspace_id = get_default_workspace_id(client, headers)
-    project = client.post(
-        "/api/v1/projects", json={"name": "P", "workspace_id": workspace_id}, headers=headers
-    ).json()
+    project = create_project(client, headers, workspace_id)
 
     rule = client.post(
         "/api/v1/automations",

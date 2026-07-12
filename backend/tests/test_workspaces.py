@@ -1,4 +1,4 @@
-from tests.conftest import register_and_login, auth_headers, get_default_workspace_id
+from tests.conftest import register_and_login, auth_headers, get_default_workspace_id, create_project
 
 
 def test_register_creates_default_workspace(client):
@@ -60,10 +60,7 @@ def test_member_added_can_see_workspace_projects(client):
         headers=owner_headers,
     )
 
-    project = client.post(
-        "/api/v1/projects", json={"name": "Projeto Compartilhado", "workspace_id": workspace_id},
-        headers=owner_headers,
-    ).json()
+    project = create_project(client, owner_headers, workspace_id, name="Projeto Compartilhado")
 
     listing = client.get(
         "/api/v1/projects", params={"workspace_id": workspace_id}, headers=member_headers
@@ -79,10 +76,7 @@ def test_non_member_cannot_see_workspace_projects(client):
     outsider_headers = auth_headers(outsider_token)
     workspace_id = get_default_workspace_id(client, owner_headers)
 
-    project = client.post(
-        "/api/v1/projects", json={"name": "Privado", "workspace_id": workspace_id},
-        headers=owner_headers,
-    ).json()
+    project = create_project(client, owner_headers, workspace_id, name="Privado")
 
     response = client.get(f"/api/v1/projects/{project['id']}", headers=outsider_headers)
     assert response.status_code == 404
@@ -105,10 +99,7 @@ def test_workspace_member_sees_all_tasks_in_project_board(client):
         json={"email": "colleague@rbm.com", "role": "member"},
         headers=owner_headers,
     )
-    project = client.post(
-        "/api/v1/projects", json={"name": "Projeto", "workspace_id": workspace_id},
-        headers=owner_headers,
-    ).json()
+    project = create_project(client, owner_headers, workspace_id, name="Projeto")
     task = client.post(
         "/api/v1/tasks", json={"title": "Tarefa do owner", "project_id": project["id"]},
         headers=owner_headers,

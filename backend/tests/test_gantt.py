@@ -1,16 +1,14 @@
 from datetime import datetime, timedelta, timezone
-from tests.conftest import register_and_login, auth_headers, get_default_workspace_id
+from tests.conftest import register_and_login, auth_headers, get_default_workspace_id, create_project
 
 
 def _create_project(client, headers, name="Projeto Gantt"):
     workspace_id = get_default_workspace_id(client, headers)
-    return client.post(
-        "/api/v1/projects", json={"name": name, "workspace_id": workspace_id}, headers=headers
-    ).json()
+    return create_project(client, headers, workspace_id, name=name)
 
 
 def _create_task(client, headers, project_id, title, days_start=0, days_end=1, **overrides):
-    base = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    base = datetime.now(timezone.utc) + timedelta(days=1)
     payload = {
         "title": title,
         "project_id": project_id,

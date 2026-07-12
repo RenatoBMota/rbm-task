@@ -97,6 +97,7 @@ export function TaskDetailModal({ taskId, onClose }: { taskId: number; onClose: 
   const [moveStatus, setMoveStatus] = useState<TaskStatus>("todo");
   const [shareMessage, setShareMessage] = useState("");
   const [deleteError, setDeleteError] = useState("");
+  const [updateError, setUpdateError] = useState("");
   const menuRef = useOutsideClick<HTMLDivElement>(() => {
     setMenuOpen(false);
     setMenuView("main");
@@ -168,7 +169,14 @@ export function TaskDetailModal({ taskId, onClose }: { taskId: number; onClose: 
 
   const updateTask = useMutation({
     mutationFn: (data: TaskUpdatePayload) => api.put(`/tasks/${taskId}`, data),
-    onSuccess: invalidateTask,
+    onSuccess: () => {
+      invalidateTask();
+      setUpdateError("");
+    },
+    onError: (err: unknown) => {
+      const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+      setUpdateError(msg || "Não foi possível salvar a alteração.");
+    },
   });
 
   const duplicateTask = useMutation({
@@ -749,6 +757,9 @@ export function TaskDetailModal({ taskId, onClose }: { taskId: number; onClose: 
         </div>
 
         <div className="p-6 space-y-8">
+          {updateError && (
+            <p className="text-xs text-red-600 bg-red-50 px-3 py-2 rounded-lg -mt-2">{updateError}</p>
+          )}
           <section>
             <h3 className="text-sm font-semibold text-slate-700 mb-2">Descrição</h3>
             {editingDescription ? (

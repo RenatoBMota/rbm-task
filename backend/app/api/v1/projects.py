@@ -12,6 +12,7 @@ from app.crud.task import get_all_project_tasks
 from app.crud.workspace import get_member
 from app.crud.resource import task_cost
 from app.core.critical_path import compute_critical_path
+from app.core.exceptions import ProjectDateRangeError
 from app.models.user import User
 from app.models.task_dependency import TaskDependency
 from app.schemas.project import ProjectCreate, ProjectUpdate, ProjectOut, ProjectDuplicate
@@ -77,7 +78,10 @@ def update(
     current_user: User = Depends(get_current_user),
 ):
     project = _get_project_with_access(db, project_id, current_user.id)
-    return update_project(db, project, project_in)
+    try:
+        return update_project(db, project, project_in)
+    except ProjectDateRangeError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
 
 
 @router.post("/{project_id}/duplicate", response_model=ProjectOut, status_code=status.HTTP_201_CREATED)

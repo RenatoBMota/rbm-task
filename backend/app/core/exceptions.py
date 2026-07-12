@@ -4,3 +4,11 @@ class TaskBlockedError(Exception):
         super().__init__(
             "Tarefa bloqueada por dependências não concluídas: " + ", ".join(blocking_titles)
         )
+
+
+class ProjectDateRangeError(Exception):
+    pass
+
+
+class TaskDateRangeError(Exception):
+    pass

@@ -4,8 +4,8 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.api.deps import get_current_user
 from app.crud.task import (
-    get_task, get_tasks, get_today_tasks, get_overdue_tasks, get_board_tasks, get_subtasks,
-    create_task, update_task, delete_task, move_task, duplicate_task
+    get_task, get_tasks, get_today_tasks, get_overdue_tasks, get_board_tasks, get_standalone_board_tasks,
+    get_subtasks, create_task, update_task, delete_task, move_task, duplicate_task
 )
 from app.crud.task_history import get_history
 from app.crud.task_dependency import (
@@ -17,7 +17,7 @@ from app.crud.resource import (
     get_resource, get_assignment, get_task_assignments, assign_resource, update_assignment, remove_assignment,
 )
 from app.api.access import require_project_member, require_task_access, require_workspace_member
-from app.core.exceptions import TaskBlockedError
+from app.core.exceptions import TaskBlockedError, TaskDateRangeError
 from app.models.user import User
 from app.schemas.task import TaskCreate, TaskUpdate, TaskOut, TaskMove, TaskDuplicate
 from app.schemas.task_history import TaskHistoryOut
@@ -69,10 +69,12 @@ def list_overdue_tasks(
 
 @router.get("/board", response_model=list[TaskOut])
 def list_board_tasks(
-    project_id: int,
+    project_id: int | None = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    if project_id is None:
+        return get_standalone_board_tasks(db, current_user.id)
     require_project_member(db, project_id, current_user.id)
     return get_board_tasks(db, project_id)
 
@@ -85,7 +87,10 @@ def create(
 ):
     if task_in.project_id:
         require_project_member(db, task_in.project_id, current_user.id)
-    return create_task(db, task_in, creator_id=current_user.id)
+    try:
+        return create_task(db, task_in, creator_id=current_user.id)
+    except TaskDateRangeError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
 
 
 @router.get("/{task_id}", response_model=TaskOut)
@@ -117,7 +122,7 @@ def update(
     task = require_task_access(db, task_id, current_user.id)
     try:
         return update_task(db, task, task_in, changed_by_id=current_user.id)
-    except TaskBlockedError as exc:
+    except (TaskBlockedError, TaskDateRangeError) as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
 
 
