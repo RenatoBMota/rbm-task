@@ -10,6 +10,7 @@ from typing import Sequence, Union
 
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy.dialects import postgresql
 
 
 revision: str = '0ccf73633dde'
@@ -93,8 +94,12 @@ def upgrade() -> None:
         batch_op.create_foreign_key(
             "fk_projects_workspace_id_workspaces", "workspaces", ["workspace_id"], ["id"]
         )
+    task_recurrence_enum = postgresql.ENUM(
+        'NONE', 'DAILY', 'WEEKLY', 'MONTHLY', name='taskrecurrence'
+    )
+    task_recurrence_enum.create(op.get_bind(), checkfirst=True)
     op.add_column('tasks', sa.Column(
-        'recurrence', sa.Enum('NONE', 'DAILY', 'WEEKLY', 'MONTHLY', name='taskrecurrence'),
+        'recurrence', task_recurrence_enum,
         nullable=False, server_default='NONE',
     ))
     op.add_column('tasks', sa.Column('location', sa.String(length=255), nullable=True))
@@ -154,6 +159,7 @@ def downgrade() -> None:
     op.drop_column('tasks', 'is_archived')
     op.drop_column('tasks', 'location')
     op.drop_column('tasks', 'recurrence')
+    postgresql.ENUM(name='taskrecurrence').drop(op.get_bind(), checkfirst=True)
     with op.batch_alter_table('projects') as batch_op:
         batch_op.drop_constraint("fk_projects_workspace_id_workspaces", type_='foreignkey')
     op.drop_column('projects', 'workspace_id')
@@ -163,6 +169,7 @@ def downgrade() -> None:
     op.drop_table('task_dependencies')
     op.drop_table('reminders')
     op.drop_table('workspace_members')
+    postgresql.ENUM(name='workspacerole').drop(op.get_bind(), checkfirst=True)
     op.drop_table('workspaces')
     op.drop_table('labels')
     # ### end Alembic commands ###
