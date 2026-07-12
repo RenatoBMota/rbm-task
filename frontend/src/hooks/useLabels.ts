@@ -18,5 +18,16 @@ export function useLabels() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["labels"] }),
   });
 
-  return { labels, isLoading, createLabel };
+  const updateLabel = useMutation({
+    mutationFn: ({ id, ...data }: { id: number; name?: string; color?: string }) =>
+      api.put(`/labels/${id}`, data).then((r) => r.data as Label),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["labels"] }),
+  });
+
+  const deleteLabel = useMutation({
+    mutationFn: (id: number) => api.delete(`/labels/${id}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["labels"] }),
+  });
+
+  return { labels, isLoading, createLabel, updateLabel, deleteLabel };
 }

@@ -21,16 +21,20 @@ import api from "@/lib/api";
 import { PRIORITY_COLORS } from "@/lib/types";
 import type { Task } from "@/lib/types";
 import { TaskDetailModal } from "@/components/tasks/TaskDetailModal";
+import { useWorkspaces } from "@/hooks/useWorkspaces";
 
 const WEEKDAYS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 
 export default function CalendarPage() {
   const [cursor, setCursor] = useState(new Date());
   const [selectedTaskId, setSelectedTaskId] = useState<number | null>(null);
+  const { currentWorkspaceId } = useWorkspaces();
 
   const { data: tasks = [] } = useQuery<Task[]>({
-    queryKey: ["tasks"],
-    queryFn: () => api.get("/tasks", { params: { limit: 500 } }).then((r) => r.data),
+    queryKey: ["tasks", "calendar", currentWorkspaceId],
+    queryFn: () =>
+      api.get("/tasks", { params: { limit: 500, workspace_id: currentWorkspaceId } }).then((r) => r.data),
+    enabled: !!currentWorkspaceId,
   });
 
   const monthStart = startOfMonth(cursor);

@@ -46,17 +46,19 @@ const priorityColors: Record<string, string> = {
 export default function DashboardPage() {
   const user = useAuthStore((s) => s.user);
 
+  const { currentWorkspaceId } = useWorkspaces();
+
   const { data: todayTasks = [] } = useQuery<Task[]>({
-    queryKey: ["tasks", "today"],
-    queryFn: () => api.get("/tasks/today").then((r) => r.data),
+    queryKey: ["tasks", "today", currentWorkspaceId],
+    queryFn: () => api.get("/tasks/today", { params: { workspace_id: currentWorkspaceId } }).then((r) => r.data),
+    enabled: !!currentWorkspaceId,
   });
 
   const { data: overdueTasks = [] } = useQuery<Task[]>({
-    queryKey: ["tasks", "overdue"],
-    queryFn: () => api.get("/tasks/overdue").then((r) => r.data),
+    queryKey: ["tasks", "overdue", currentWorkspaceId],
+    queryFn: () => api.get("/tasks/overdue", { params: { workspace_id: currentWorkspaceId } }).then((r) => r.data),
+    enabled: !!currentWorkspaceId,
   });
-
-  const { currentWorkspaceId } = useWorkspaces();
 
   const { data: projects = [] } = useQuery<Project[]>({
     queryKey: ["projects", currentWorkspaceId],
@@ -65,8 +67,9 @@ export default function DashboardPage() {
   });
 
   const { data: allTasks = [] } = useQuery<Task[]>({
-    queryKey: ["tasks"],
-    queryFn: () => api.get("/tasks").then((r) => r.data),
+    queryKey: ["tasks", currentWorkspaceId],
+    queryFn: () => api.get("/tasks", { params: { workspace_id: currentWorkspaceId } }).then((r) => r.data),
+    enabled: !!currentWorkspaceId,
   });
 
   const { data: suggestions = [] } = useQuery<PrioritySuggestion[]>({

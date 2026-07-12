@@ -114,3 +114,37 @@ def test_delete_task(client):
     response = client.delete(f"/api/v1/tasks/{task['id']}", headers=headers)
     assert response.status_code == 204
     assert client.get(f"/api/v1/tasks/{task['id']}", headers=headers).status_code == 404
+
+
+def test_list_tasks_scoped_to_workspace_includes_personal_tasks(client):
+    token = register_and_login(client)
+    headers = auth_headers(token)
+    workspace_a = get_default_workspace_id(client, headers)
+    project_a = _create_project(client, headers, name="Projeto A")
+
+    workspace_b = client.post(
+        "/api/v1/workspaces", json={"name": "Segunda área"}, headers=headers
+    ).json()["id"]
+    project_b = client.post(
+        "/api/v1/projects", json={"name": "Projeto B", "workspace_id": workspace_b}, headers=headers
+    ).json()
+
+    client.post("/api/v1/tasks", json={"title": "Tarefa A", "project_id": project_a["id"]}, headers=headers)
+    client.post("/api/v1/tasks", json={"title": "Tarefa B", "project_id": project_b["id"]}, headers=headers)
+    client.post("/api/v1/tasks", json={"title": "Tarefa pessoal"}, headers=headers)
+
+    response = client.get("/api/v1/tasks", params={"workspace_id": workspace_a}, headers=headers)
+    assert response.status_code == 200
+    titles = {t["title"] for t in response.json()}
+    assert titles == {"Tarefa A", "Tarefa pessoal"}
+
+
+def test_list_tasks_requires_workspace_membership(client):
+    token_a = register_and_login(client, email="a@rbm.com")
+    token_b = register_and_login(client, email="b@rbm.com")
+    workspace_a = get_default_workspace_id(client, auth_headers(token_a))
+
+    response = client.get(
+        "/api/v1/tasks", params={"workspace_id": workspace_a}, headers=auth_headers(token_b)
+    )
+    assert response.status_code == 404

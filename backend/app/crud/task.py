@@ -1,7 +1,9 @@
 import calendar
 from datetime import datetime, timedelta, timezone
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 from app.models.task import Task, TaskStatus, TaskRecurrence
+from app.models.project import Project
 from app.models.notification import NotificationType
 from app.models.automation import TriggerEvent
 from app.crud.notification import create_notification
@@ -62,10 +64,18 @@ def get_task(db: Session, task_id: int) -> Task | None:
     return db.query(Task).filter(Task.id == task_id).first()
 
 
+def _scope_to_workspace(db: Session, query, workspace_id: int | None):
+    if workspace_id is None:
+        return query
+    project_ids = [p.id for p in db.query(Project.id).filter(Project.workspace_id == workspace_id).all()]
+    return query.filter(or_(Task.project_id == None, Task.project_id.in_(project_ids)))
+
+
 def get_tasks(
     db: Session,
     assignee_id: int | None = None,
     project_id: int | None = None,
+    workspace_id: int | None = None,
     skip: int = 0,
     limit: int = 100,
     include_archived: bool = False,
@@ -77,18 +87,20 @@ def get_tasks(
         query = query.filter(Task.assignee_id == assignee_id)
     if project_id:
         query = query.filter(Task.project_id == project_id)
+    query = _scope_to_workspace(db, query, workspace_id)
     return query.offset(skip).limit(limit).all()
 
 
-def get_today_tasks(db: Session, user_id: int) -> list[Task]:
+def get_today_tasks(db: Session, user_id: int, workspace_id: int | None = None) -> list[Task]:
     today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
     today_end = today_start.replace(hour=23, minute=59, second=59)
-    return db.query(Task).filter(
+    query = db.query(Task).filter(
         Task.assignee_id == user_id,
         Task.due_date >= today_start,
         Task.due_date <= today_end,
         Task.is_completed == False,
-    ).all()
+    )
+    return _scope_to_workspace(db, query, workspace_id).all()
 
 
 def get_subtasks(db: Session, parent_id: int) -> list[Task]:
@@ -104,13 +116,14 @@ def get_board_tasks(db: Session, project_id: int) -> list[Task]:
     )
 
 
-def get_overdue_tasks(db: Session, user_id: int) -> list[Task]:
+def get_overdue_tasks(db: Session, user_id: int, workspace_id: int | None = None) -> list[Task]:
     now = datetime.now(timezone.utc)
-    return db.query(Task).filter(
+    query = db.query(Task).filter(
         Task.assignee_id == user_id,
         Task.due_date < now,
         Task.is_completed == False,
-    ).all()
+    )
+    return _scope_to_workspace(db, query, workspace_id).all()
 
 
 def create_task(db: Session, task_in: TaskCreate, creator_id: int) -> Task:

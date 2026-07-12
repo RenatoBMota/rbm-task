@@ -43,8 +43,9 @@ export default function TasksPage() {
   });
 
   const { data: tasks = [], isLoading } = useQuery<Task[]>({
-    queryKey: ["tasks"],
-    queryFn: () => api.get("/tasks").then((r) => r.data),
+    queryKey: ["tasks", currentWorkspaceId],
+    queryFn: () => api.get("/tasks", { params: { workspace_id: currentWorkspaceId } }).then((r) => r.data),
+    enabled: !!currentWorkspaceId,
   });
 
   const toggleMutation = useMutation({

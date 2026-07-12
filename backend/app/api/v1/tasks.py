@@ -12,7 +12,7 @@ from app.crud.task_dependency import (
 )
 from app.crud.label import get_label, attach_label, detach_label
 from app.crud.reminder import get_reminder, get_reminders, create_reminder, delete_reminder
-from app.api.access import require_project_member, require_task_access
+from app.api.access import require_project_member, require_task_access, require_workspace_member
 from app.core.exceptions import TaskBlockedError
 from app.models.user import User
 from app.schemas.task import TaskCreate, TaskUpdate, TaskOut, TaskMove, TaskDuplicate
@@ -26,6 +26,7 @@ router = APIRouter(prefix="/tasks", tags=["tasks"])
 @router.get("", response_model=list[TaskOut])
 def list_tasks(
     project_id: int | None = None,
+    workspace_id: int | None = None,
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
@@ -34,23 +35,31 @@ def list_tasks(
     if project_id:
         require_project_member(db, project_id, current_user.id)
         return get_tasks(db, project_id=project_id, skip=skip, limit=limit)
-    return get_tasks(db, assignee_id=current_user.id, skip=skip, limit=limit)
+    if workspace_id:
+        require_workspace_member(db, workspace_id, current_user.id)
+    return get_tasks(db, assignee_id=current_user.id, workspace_id=workspace_id, skip=skip, limit=limit)
 
 
 @router.get("/today", response_model=list[TaskOut])
 def list_today_tasks(
+    workspace_id: int | None = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    return get_today_tasks(db, current_user.id)
+    if workspace_id:
+        require_workspace_member(db, workspace_id, current_user.id)
+    return get_today_tasks(db, current_user.id, workspace_id=workspace_id)
 
 
 @router.get("/overdue", response_model=list[TaskOut])
 def list_overdue_tasks(
+    workspace_id: int | None = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    return get_overdue_tasks(db, current_user.id)
+    if workspace_id:
+        require_workspace_member(db, workspace_id, current_user.id)
+    return get_overdue_tasks(db, current_user.id, workspace_id=workspace_id)
 
 
 @router.get("/board", response_model=list[TaskOut])
