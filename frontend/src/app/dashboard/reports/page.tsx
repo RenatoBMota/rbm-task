@@ -37,12 +37,15 @@ const PERIOD_OPTIONS: { value: RecapPeriod; label: string }[] = [
   { value: "daily", label: "Diário" },
   { value: "weekly", label: "Semanal" },
   { value: "monthly", label: "Mensal" },
+  { value: "custom", label: "Personalizado" },
 ];
 
 export default function ReportsPage() {
   const { currentWorkspaceId } = useWorkspaces();
   const [projectId, setProjectId] = useState<number | null>(null);
   const [period, setPeriod] = useState<RecapPeriod>("weekly");
+  const [customStart, setCustomStart] = useState("");
+  const [customEnd, setCustomEnd] = useState("");
 
   const { data: projects = EMPTY_PROJECTS } = useQuery<Project[]>({
     queryKey: ["projects", currentWorkspaceId],
@@ -58,11 +61,23 @@ export default function ReportsPage() {
     enabled: !!effectiveProjectId,
   });
 
-  const { data: recap } = useQuery<Recap>({
-    queryKey: ["reports", "recap", currentWorkspaceId, period],
-    queryFn: () => api.get(`/reports/workspaces/${currentWorkspaceId}/recap`, { params: { period } }).then((r) => r.data),
-    enabled: !!currentWorkspaceId,
+  const isCustomReady = period !== "custom" || (!!customStart && !!customEnd);
+
+  const { data: recap, error: recapError } = useQuery<Recap>({
+    queryKey: ["reports", "recap", currentWorkspaceId, period, customStart, customEnd],
+    queryFn: () => {
+      let params: Record<string, string> = { period };
+      if (period === "custom") {
+        const endOfDay = new Date(customEnd);
+        endOfDay.setHours(23, 59, 59, 999);
+        params = { period, start: new Date(customStart).toISOString(), end: endOfDay.toISOString() };
+      }
+      return api.get(`/reports/workspaces/${currentWorkspaceId}/recap`, { params }).then((r) => r.data);
+    },
+    enabled: !!currentWorkspaceId && isCustomReady,
   });
+
+  const recapErrorMessage = (recapError as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
 
   const downloadExecutivePdf = async () => {
     if (!effectiveProjectId) return;
@@ -215,27 +230,50 @@ export default function ReportsPage() {
 
       {/* Periodic recap */}
       <section className="card">
-        <div className="panel-header">
+        <div className="panel-header flex-wrap gap-2">
           <span className="font-semibold text-slate-900 dark:text-white">Resumo Periódico</span>
-          <div className="flex rounded-lg border border-surface-200 dark:border-slate-700 overflow-hidden text-sm">
-            {PERIOD_OPTIONS.map((opt) => (
-              <button
-                key={opt.value}
-                className={clsx(
-                  "px-3 py-1.5",
-                  period === opt.value
-                    ? "bg-primary-600 text-white"
-                    : "text-slate-500 dark:text-slate-400 hover:bg-surface-50 dark:hover:bg-surface-800"
-                )}
-                onClick={() => setPeriod(opt.value)}
-              >
-                {opt.label}
-              </button>
-            ))}
+          <div className="flex items-center gap-2 flex-wrap">
+            {period === "custom" && (
+              <div className="flex items-center gap-1.5 text-sm">
+                <input
+                  type="date"
+                  className="input py-1.5 w-36"
+                  value={customStart}
+                  onChange={(e) => setCustomStart(e.target.value)}
+                />
+                <span className="text-slate-400">até</span>
+                <input
+                  type="date"
+                  className="input py-1.5 w-36"
+                  value={customEnd}
+                  onChange={(e) => setCustomEnd(e.target.value)}
+                />
+              </div>
+            )}
+            <div className="flex rounded-lg border border-surface-200 dark:border-slate-700 overflow-hidden text-sm">
+              {PERIOD_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  className={clsx(
+                    "px-3 py-1.5",
+                    period === opt.value
+                      ? "bg-primary-600 text-white"
+                      : "text-slate-500 dark:text-slate-400 hover:bg-surface-50 dark:hover:bg-surface-800"
+                  )}
+                  onClick={() => setPeriod(opt.value)}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
-        {!recap ? (
+        {period === "custom" && !isCustomReady ? (
+          <p className="text-slate-400 text-sm p-4">Selecione as datas de início e fim.</p>
+        ) : recapErrorMessage ? (
+          <p className="text-sm text-red-600 p-4">{recapErrorMessage}</p>
+        ) : !recap ? (
           <p className="text-slate-400 text-sm p-4">Carregando...</p>
         ) : (
           <div className="p-4">

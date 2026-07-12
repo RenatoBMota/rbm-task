@@ -141,3 +141,108 @@ def test_workspace_recap_requires_membership(client):
         f"/api/v1/reports/workspaces/{workspace_a}/recap", headers=auth_headers(token_b)
     )
     assert response.status_code == 404
+
+
+def test_recap_daily_uses_calendar_day_boundaries(client):
+    token = register_and_login(client)
+    headers = auth_headers(token)
+    workspace_id = get_default_workspace_id(client, headers)
+
+    now = datetime.now(timezone.utc)
+    response = client.get(
+        f"/api/v1/reports/workspaces/{workspace_id}/recap", params={"period": "daily"}, headers=headers
+    )
+    assert response.status_code == 200
+    body = response.json()
+    start = datetime.fromisoformat(body["period_start"])
+    end = datetime.fromisoformat(body["period_end"])
+    assert start.date() == now.date()
+    assert (start.hour, start.minute, start.second) == (0, 0, 0)
+    assert end.date() == now.date()
+    assert (end.hour, end.minute, end.second) == (23, 59, 59)
+
+
+def test_recap_weekly_spans_sunday_to_saturday(client):
+    token = register_and_login(client)
+    headers = auth_headers(token)
+    workspace_id = get_default_workspace_id(client, headers)
+
+    now = datetime.now(timezone.utc)
+    response = client.get(
+        f"/api/v1/reports/workspaces/{workspace_id}/recap", params={"period": "weekly"}, headers=headers
+    )
+    assert response.status_code == 200
+    body = response.json()
+    start = datetime.fromisoformat(body["period_start"])
+    end = datetime.fromisoformat(body["period_end"])
+    assert start.weekday() == 6  # Sunday
+    assert end.weekday() == 5  # Saturday
+    assert start <= now <= end
+    assert (end - start) < timedelta(days=7)
+
+
+def test_recap_monthly_spans_current_calendar_month(client):
+    token = register_and_login(client)
+    headers = auth_headers(token)
+    workspace_id = get_default_workspace_id(client, headers)
+
+    now = datetime.now(timezone.utc)
+    response = client.get(
+        f"/api/v1/reports/workspaces/{workspace_id}/recap", params={"period": "monthly"}, headers=headers
+    )
+    assert response.status_code == 200
+    body = response.json()
+    start = datetime.fromisoformat(body["period_start"])
+    end = datetime.fromisoformat(body["period_end"])
+    assert start.day == 1
+    assert start.month == now.month
+    assert end.month == now.month
+    assert start <= now <= end
+
+
+def test_recap_custom_period_requires_start_and_end(client):
+    token = register_and_login(client)
+    headers = auth_headers(token)
+    workspace_id = get_default_workspace_id(client, headers)
+
+    response = client.get(
+        f"/api/v1/reports/workspaces/{workspace_id}/recap", params={"period": "custom"}, headers=headers
+    )
+    assert response.status_code == 400
+
+
+def test_recap_custom_period_rejects_end_before_start(client):
+    token = register_and_login(client)
+    headers = auth_headers(token)
+    workspace_id = get_default_workspace_id(client, headers)
+    now = datetime.now(timezone.utc)
+
+    response = client.get(
+        f"/api/v1/reports/workspaces/{workspace_id}/recap",
+        params={"period": "custom", "start": now.isoformat(), "end": (now - timedelta(days=1)).isoformat()},
+        headers=headers,
+    )
+    assert response.status_code == 400
+
+
+def test_recap_custom_period_returns_counts_within_range(client):
+    token = register_and_login(client)
+    headers = auth_headers(token)
+    workspace_id = get_default_workspace_id(client, headers)
+    project = create_project(client, headers, workspace_id)
+    client.post("/api/v1/tasks", json={"title": "Dentro do range", "project_id": project["id"]}, headers=headers)
+
+    now = datetime.now(timezone.utc)
+    response = client.get(
+        f"/api/v1/reports/workspaces/{workspace_id}/recap",
+        params={
+            "period": "custom",
+            "start": (now - timedelta(hours=1)).isoformat(),
+            "end": (now + timedelta(hours=1)).isoformat(),
+        },
+        headers=headers,
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["period"] == "custom"
+    assert body["tasks_created"] >= 1

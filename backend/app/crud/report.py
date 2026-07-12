@@ -1,3 +1,4 @@
+import calendar
 from datetime import datetime, timedelta, timezone
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -89,24 +90,57 @@ def build_executive_report(db: Session, project: Project) -> dict:
     }
 
 
-def _period_bounds(period: str, now: datetime) -> tuple[datetime, datetime, datetime, datetime]:
+def _start_of_day(dt: datetime) -> datetime:
+    return dt.replace(hour=0, minute=0, second=0, microsecond=0)
+
+
+def _period_bounds(
+    period: str,
+    now: datetime,
+    custom_start: datetime | None = None,
+    custom_end: datetime | None = None,
+) -> tuple[datetime, datetime, datetime, datetime]:
+    if period == "custom":
+        start = _aware(custom_start)
+        end = _aware(custom_end)
+        length = end - start
+        return start, end, start - length, start
+
     if period == "daily":
-        start = now.replace(hour=0, minute=0, second=0, microsecond=0)
-        length = now - start
+        # Calendar day: 00:00:00 to 23:59:59.999999
+        start = _start_of_day(now)
+        end = start + timedelta(days=1) - timedelta(microseconds=1)
+        prev_start = start - timedelta(days=1)
+        prev_end = start - timedelta(microseconds=1)
     elif period == "weekly":
-        length = timedelta(days=7)
-        start = now - length
+        # Calendar week: Sunday to Saturday
+        days_since_sunday = (now.weekday() + 1) % 7
+        start = _start_of_day(now) - timedelta(days=days_since_sunday)
+        end = start + timedelta(days=7) - timedelta(microseconds=1)
+        prev_start = start - timedelta(days=7)
+        prev_end = start - timedelta(microseconds=1)
     elif period == "monthly":
-        length = timedelta(days=30)
-        start = now - length
+        # Calendar month: 1st to last day
+        start = _start_of_day(now).replace(day=1)
+        last_day = calendar.monthrange(start.year, start.month)[1]
+        end = start.replace(day=last_day, hour=23, minute=59, second=59, microsecond=999999)
+        prev_month_end = start - timedelta(microseconds=1)
+        prev_start = prev_month_end.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        prev_end = prev_month_end
     else:
         raise ValueError("invalid period")
-    return start, now, start - length, start
+    return start, end, prev_start, prev_end
 
 
-def build_recap(db: Session, workspace_id: int, period: str) -> dict:
+def build_recap(
+    db: Session,
+    workspace_id: int,
+    period: str,
+    custom_start: datetime | None = None,
+    custom_end: datetime | None = None,
+) -> dict:
     now = datetime.now(timezone.utc)
-    start, end, prev_start, prev_end = _period_bounds(period, now)
+    start, end, prev_start, prev_end = _period_bounds(period, now, custom_start, custom_end)
     project_ids = [p.id for p in db.query(Project.id).filter(Project.workspace_id == workspace_id).all()]
 
     if not project_ids:

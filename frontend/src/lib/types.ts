@@ -129,7 +129,7 @@ export interface ExecutiveReport {
   team: ExecutiveReportTeamMember[];
 }
 
-export type RecapPeriod = "daily" | "weekly" | "monthly";
+export type RecapPeriod = "daily" | "weekly" | "monthly" | "custom";
 
 export interface RecapContributor {
   user_id: number;

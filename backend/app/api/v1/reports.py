@@ -1,3 +1,4 @@
+from datetime import datetime
 from io import BytesIO
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
@@ -199,10 +200,23 @@ def executive_report_pdf(
 def workspace_recap(
     workspace_id: int,
     period: str = "weekly",
+    start: datetime | None = None,
+    end: datetime | None = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    if period not in ("daily", "weekly", "monthly"):
+    if period == "custom":
+        if not start or not end:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Informe 'start' e 'end' para um período personalizado.",
+            )
+        if end < start:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="A data final não pode ser anterior à data inicial.",
+            )
+    elif period not in ("daily", "weekly", "monthly"):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Período inválido")
     require_workspace_member(db, workspace_id, current_user.id)
-    return build_recap(db, workspace_id, period)
+    return build_recap(db, workspace_id, period, start, end)
