@@ -54,7 +54,7 @@ export default function KanbanPage() {
 
   const { currentWorkspaceId } = useWorkspaces();
 
-  const { data: projects = EMPTY_PROJECTS } = useQuery<Project[]>({
+  const { data: projects = EMPTY_PROJECTS, isSuccess: projectsLoaded } = useQuery<Project[]>({
     queryKey: ["projects", currentWorkspaceId],
     queryFn: () => api.get("/projects", { params: { workspace_id: currentWorkspaceId } }).then((r) => r.data),
     enabled: !!currentWorkspaceId,
@@ -65,8 +65,9 @@ export default function KanbanPage() {
   }, [currentWorkspaceId]);
 
   useEffect(() => {
-    if (!projectId && projects.length > 0) setProjectId(projects[0].id);
-  }, [projects, projectId]);
+    if (projectId !== null || !projectsLoaded) return;
+    setProjectId(projects.length > 0 ? projects[0].id : AGENDA);
+  }, [projects, projectId, projectsLoaded]);
 
   const { data: tasks = EMPTY_TASKS } = useQuery<Task[]>({
     queryKey: ["tasks", "board", projectId],
@@ -141,6 +142,7 @@ export default function KanbanPage() {
             value={projectId ?? ""}
             onChange={(e) => setProjectId(e.target.value === AGENDA ? AGENDA : Number(e.target.value))}
           >
+            {projectId === null && <option value="">Carregando...</option>}
             <option value={AGENDA}>📅 Agenda diária (sem projeto)</option>
             {projects.map((p) => (
               <option key={p.id} value={p.id}>
