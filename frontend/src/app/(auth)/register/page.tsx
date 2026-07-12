@@ -37,8 +37,8 @@ export default function RegisterPage() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-50 to-surface-100">
       <div className="card w-full max-w-md p-8">
         <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold text-primary-600">RBM TASK</h1>
-          <p className="text-slate-500 mt-1 text-sm">Crie sua conta</p>
+          <img src="/logo-full.png" alt="TASK R PRO" className="h-44 mx-auto" />
+          <p className="text-slate-500 mt-2 text-sm">Crie sua conta</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">

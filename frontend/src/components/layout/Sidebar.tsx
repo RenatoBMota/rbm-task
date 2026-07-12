@@ -32,9 +32,14 @@ export function Sidebar() {
 
   return (
     <aside className="hidden lg:flex w-60 min-h-screen bg-surface-950 flex-col flex-shrink-0">
-      <div className="px-6 py-5 border-b border-slate-700">
-        <h1 className="text-white font-bold text-lg tracking-wide">RBM TASK</h1>
-        <p className="text-slate-400 text-xs mt-0.5">Enterprise</p>
+      <div className="px-6 py-5 border-b border-slate-700 flex items-center gap-2.5">
+        <img src="/logo-icon.png" alt="" className="w-9 h-9 flex-shrink-0" />
+        <div className="min-w-0">
+          <h1 className="text-white font-bold text-lg tracking-wide leading-tight">TASK R PRO</h1>
+          <p className="text-slate-400 text-[10px] leading-tight mt-0.5">
+            Gerenciador de Tarefas · Projetos · Produtividade
+          </p>
+        </div>
       </div>
 
       <WorkspaceSwitcher />
