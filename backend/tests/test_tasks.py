@@ -1,8 +1,11 @@
-from tests.conftest import register_and_login, auth_headers
+from tests.conftest import register_and_login, auth_headers, get_default_workspace_id
 
 
 def _create_project(client, headers, name="Projeto"):
-    return client.post("/api/v1/projects/", json={"name": name}, headers=headers).json()
+    workspace_id = get_default_workspace_id(client, headers)
+    return client.post(
+        "/api/v1/projects/", json={"name": name, "workspace_id": workspace_id}, headers=headers
+    ).json()
 
 
 def test_create_task_defaults_to_creator(client):

@@ -1,4 +1,4 @@
-from tests.conftest import register_and_login, auth_headers
+from tests.conftest import register_and_login, auth_headers, get_default_workspace_id
 
 
 def test_admin_can_list_users_and_change_role(client):
@@ -29,7 +29,10 @@ def test_member_cannot_list_users(client):
 def test_reports_xlsx_and_pdf_download(client):
     token = register_and_login(client)
     headers = auth_headers(token)
-    project = client.post("/api/v1/projects/", json={"name": "P"}, headers=headers).json()
+    workspace_id = get_default_workspace_id(client, headers)
+    project = client.post(
+        "/api/v1/projects/", json={"name": "P", "workspace_id": workspace_id}, headers=headers
+    ).json()
     client.post(
         "/api/v1/tasks/", json={"title": "T", "project_id": project["id"]}, headers=headers
     )

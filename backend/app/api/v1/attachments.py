@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.storage import upload_file, get_presigned_download_url, delete_file
 from app.api.deps import get_current_user
-from app.crud.task import get_task
+from app.api.access import require_task_access
 from app.crud.attachment import get_attachment, get_attachments, create_attachment, delete_attachment
 from app.models.user import User
 from app.schemas.attachment import AttachmentOut, AttachmentDownloadURL
@@ -18,8 +18,7 @@ def list_attachments(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    if not get_task(db, task_id):
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tarefa não encontrada")
+    require_task_access(db, task_id, current_user.id)
     return get_attachments(db, task_id)
 
 
@@ -30,8 +29,7 @@ async def upload_attachment(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    if not get_task(db, task_id):
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tarefa não encontrada")
+    require_task_access(db, task_id, current_user.id)
 
     data = await file.read()
     object_key = f"tasks/{task_id}/{uuid.uuid4()}_{file.filename}"
@@ -54,6 +52,7 @@ def download_attachment(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    require_task_access(db, task_id, current_user.id)
     attachment = get_attachment(db, attachment_id)
     if not attachment or attachment.task_id != task_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Anexo não encontrado")
@@ -67,6 +66,7 @@ def remove_attachment(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    require_task_access(db, task_id, current_user.id)
     attachment = get_attachment(db, attachment_id)
     if not attachment or attachment.task_id != task_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Anexo não encontrado")

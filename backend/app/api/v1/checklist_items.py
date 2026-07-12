@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.api.deps import get_current_user
-from app.crud.task import get_task
+from app.api.access import require_task_access
 from app.crud.checklist_item import (
     get_checklist_item, get_checklist_items, create_checklist_item,
     update_checklist_item, delete_checklist_item,
@@ -13,20 +13,13 @@ from app.schemas.checklist_item import ChecklistItemCreate, ChecklistItemUpdate,
 router = APIRouter(prefix="/tasks/{task_id}/checklist", tags=["checklist"])
 
 
-def _get_task_or_404(db: Session, task_id: int):
-    task = get_task(db, task_id)
-    if not task:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tarefa não encontrada")
-    return task
-
-
 @router.get("/", response_model=list[ChecklistItemOut])
 def list_items(
     task_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    _get_task_or_404(db, task_id)
+    require_task_access(db, task_id, current_user.id)
     return get_checklist_items(db, task_id)
 
 
@@ -37,7 +30,7 @@ def create_item(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    _get_task_or_404(db, task_id)
+    require_task_access(db, task_id, current_user.id)
     return create_checklist_item(db, task_id, item_in)
 
 
@@ -49,6 +42,7 @@ def update_item(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    require_task_access(db, task_id, current_user.id)
     item = get_checklist_item(db, item_id)
     if not item or item.task_id != task_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Item não encontrado")
@@ -62,6 +56,7 @@ def delete_item(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    require_task_access(db, task_id, current_user.id)
     item = get_checklist_item(db, item_id)
     if not item or item.task_id != task_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Item não encontrado")

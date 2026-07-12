@@ -20,6 +20,13 @@ class TaskStatus(str, PyEnum):
     CANCELLED = "cancelled"
 
 
+class TaskRecurrence(str, PyEnum):
+    NONE = "none"
+    DAILY = "daily"
+    WEEKLY = "weekly"
+    MONTHLY = "monthly"
+
+
 class Task(Base):
     __tablename__ = "tasks"
 
@@ -37,6 +44,9 @@ class Task(Base):
     is_completed: Mapped[bool] = mapped_column(Boolean, default=False)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     position: Mapped[int] = mapped_column(Integer, default=0)
+    recurrence: Mapped[TaskRecurrence] = mapped_column(Enum(TaskRecurrence), default=TaskRecurrence.NONE)
+    location: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    is_archived: Mapped[bool] = mapped_column(Boolean, default=False)
 
     project_id: Mapped[int | None] = mapped_column(ForeignKey("projects.id"), nullable=True)
     assignee_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
@@ -63,4 +73,17 @@ class Task(Base):
     )
     attachments: Mapped[list["Attachment"]] = relationship(
         "Attachment", back_populates="task", cascade="all, delete-orphan"
+    )
+    history: Mapped[list["TaskHistory"]] = relationship(
+        "TaskHistory", back_populates="task", cascade="all, delete-orphan", order_by="TaskHistory.changed_at"
+    )
+    dependencies: Mapped[list["TaskDependency"]] = relationship(
+        "TaskDependency",
+        foreign_keys="TaskDependency.task_id",
+        back_populates="task",
+        cascade="all, delete-orphan",
+    )
+    labels: Mapped[list["Label"]] = relationship("Label", secondary="task_labels", back_populates="tasks")
+    reminders: Mapped[list["Reminder"]] = relationship(
+        "Reminder", back_populates="task", cascade="all, delete-orphan", order_by="Reminder.remind_at"
     )

@@ -3,7 +3,9 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.security import verify_password, create_access_token, create_refresh_token, decode_token
 from app.crud.user import get_user_by_email, create_user, get_user
+from app.crud.workspace import create_workspace
 from app.schemas.user import UserCreate, UserOut, Token, TokenRefresh, LoginRequest
+from app.schemas.workspace import WorkspaceCreate
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -13,7 +15,9 @@ def register(user_in: UserCreate, db: Session = Depends(get_db)):
     existing = get_user_by_email(db, user_in.email)
     if existing:
         raise HTTPException(status_code=400, detail="E-mail já cadastrado")
-    return create_user(db, user_in)
+    user = create_user(db, user_in)
+    create_workspace(db, WorkspaceCreate(name="Minha Área de Trabalho"), owner_id=user.id)
+    return user
 
 
 @router.post("/login", response_model=Token)

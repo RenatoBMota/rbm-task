@@ -7,11 +7,13 @@ from app.models.notification import NotificationType
 from app.models.automation import TriggerEvent
 from app.crud.notification import create_notification
 from app.crud.sla import sla_deadline
+from app.crud.reminder import get_due_reminders, mark_sent
 from app.core.automation_engine import evaluate_and_run
 
 logger = logging.getLogger("rbm.scheduler")
 
 CHECK_INTERVAL_MINUTES = 15
+REMINDER_CHECK_INTERVAL_MINUTES = 5
 
 
 def check_overdue_and_sla() -> None:
@@ -48,6 +50,27 @@ def check_overdue_and_sla() -> None:
         db.close()
 
 
+def check_reminders() -> None:
+    db = SessionLocal()
+    try:
+        now = datetime.now(timezone.utc)
+        for reminder in get_due_reminders(db, now):
+            task = reminder.task
+            if task and task.assignee_id:
+                create_notification(
+                    db,
+                    user_id=task.assignee_id,
+                    type=NotificationType.NEW_COMMENT,
+                    message=f"Lembrete: \"{task.title}\"",
+                    task_id=task.id,
+                )
+            mark_sent(db, reminder)
+    except Exception:
+        logger.exception("Falha ao rodar verificação de lembretes")
+    finally:
+        db.close()
+
+
 scheduler = BackgroundScheduler()
 
 
@@ -59,6 +82,13 @@ def start_scheduler() -> None:
         "interval",
         minutes=CHECK_INTERVAL_MINUTES,
         id="check_overdue_and_sla",
+        replace_existing=True,
+    )
+    scheduler.add_job(
+        check_reminders,
+        "interval",
+        minutes=REMINDER_CHECK_INTERVAL_MINUTES,
+        id="check_reminders",
         replace_existing=True,
     )
     scheduler.start()

@@ -13,7 +13,9 @@ class Project(Base):
     color: Mapped[str] = mapped_column(String(7), default="#6366f1")
     icon: Mapped[str] = mapped_column(String(50), default="folder")
     is_archived: Mapped[bool] = mapped_column(Boolean, default=False)
+    is_template: Mapped[bool] = mapped_column(Boolean, default=False)
     owner_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+    workspace_id: Mapped[int | None] = mapped_column(ForeignKey("workspaces.id"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
@@ -24,4 +26,5 @@ class Project(Base):
     )
 
     owner: Mapped["User"] = relationship("User", back_populates="projects")
+    workspace: Mapped["Workspace | None"] = relationship("Workspace", back_populates="projects")
     tasks: Mapped[list["Task"]] = relationship("Task", back_populates="project", cascade="all, delete-orphan")

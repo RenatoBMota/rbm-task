@@ -1,6 +1,7 @@
 from datetime import datetime
 from pydantic import BaseModel
-from app.models.task import TaskPriority, TaskStatus
+from app.models.task import TaskPriority, TaskStatus, TaskRecurrence
+from app.schemas.label import LabelOut
 
 
 class TaskBase(BaseModel):
@@ -13,6 +14,8 @@ class TaskBase(BaseModel):
     project_id: int | None = None
     assignee_id: int | None = None
     parent_id: int | None = None
+    recurrence: TaskRecurrence = TaskRecurrence.NONE
+    location: str | None = None
 
 
 class TaskCreate(TaskBase):
@@ -30,6 +33,9 @@ class TaskUpdate(BaseModel):
     assignee_id: int | None = None
     is_completed: bool | None = None
     position: int | None = None
+    recurrence: TaskRecurrence | None = None
+    location: str | None = None
+    is_archived: bool | None = None
 
 
 class TaskMove(BaseModel):
@@ -42,8 +48,14 @@ class TaskOut(TaskBase):
     is_completed: bool
     completed_at: datetime | None
     position: int
+    is_archived: bool
     created_at: datetime
     updated_at: datetime
     subtask_count: int = 0
+    labels: list[LabelOut] = []
 
     model_config = {"from_attributes": True}
+
+
+class TaskDuplicate(BaseModel):
+    title: str | None = None

@@ -1,8 +1,11 @@
-from tests.conftest import register_and_login, auth_headers
+from tests.conftest import register_and_login, auth_headers, get_default_workspace_id
 
 
 def _create_task(client, headers, **overrides):
-    project = client.post("/api/v1/projects/", json={"name": "P"}, headers=headers).json()
+    workspace_id = get_default_workspace_id(client, headers)
+    project = client.post(
+        "/api/v1/projects/", json={"name": "P", "workspace_id": workspace_id}, headers=headers
+    ).json()
     payload = {"title": "T", "project_id": project["id"], **overrides}
     return client.post("/api/v1/tasks/", json=payload, headers=headers).json()
 
