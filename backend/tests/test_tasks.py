@@ -1,5 +1,8 @@
 from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 from tests.conftest import register_and_login, auth_headers, get_default_workspace_id, create_project
+
+BUSINESS_TZ = ZoneInfo("America/Sao_Paulo")
 
 
 def _create_project(client, headers, name="Projeto"):
@@ -37,6 +40,27 @@ def test_list_today_and_overdue(client):
     overdue = client.get("/api/v1/tasks/overdue", headers=headers)
     assert overdue.status_code == 200
     assert len(overdue.json()) == 1
+
+
+def test_today_tasks_use_brazil_calendar_day_not_utc(client):
+    token = register_and_login(client)
+    headers = auth_headers(token)
+    project = _create_project(client, headers)
+
+    now_brt = datetime.now(BUSINESS_TZ)
+    # Due late tonight in Brazil time — this can already be tomorrow in UTC
+    # (e.g. 23:30 BRT = 02:30 UTC the next day), which is exactly the case
+    # that must still count as "today" for a Brazil-based user.
+    due_tonight_brt = now_brt.replace(hour=23, minute=30, second=0, microsecond=0)
+    client.post(
+        "/api/v1/tasks",
+        json={"title": "Hoje à noite", "project_id": project["id"], "due_date": due_tonight_brt.isoformat()},
+        headers=headers,
+    )
+
+    today = client.get("/api/v1/tasks/today", headers=headers)
+    assert today.status_code == 200
+    assert any(t["title"] == "Hoje à noite" for t in today.json())
 
 
 def test_update_task_marks_completed(client):

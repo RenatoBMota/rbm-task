@@ -1,6 +1,5 @@
 import calendar
 from datetime import datetime, timedelta, timezone
-from zoneinfo import ZoneInfo
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 from app.models.task import Task
@@ -9,15 +8,9 @@ from app.models.task_dependency import TaskDependency
 from app.models.user import User
 from app.core.critical_path import compute_critical_path
 from app.core.predictive_engine import project_risk
+from app.core.timezone import BUSINESS_TZ, aware as _aware, start_of_day as _start_of_day
 from app.crud.task import get_all_project_tasks
 from app.crud.resource import task_cost
-
-
-BUSINESS_TZ = ZoneInfo("America/Sao_Paulo")
-
-
-def _aware(dt: datetime) -> datetime:
-    return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
 
 
 def build_executive_report(db: Session, project: Project) -> dict:
@@ -92,10 +85,6 @@ def build_executive_report(db: Session, project: Project) -> dict:
         "status_breakdown": status_breakdown,
         "team": team,
     }
-
-
-def _start_of_day(dt: datetime) -> datetime:
-    return dt.replace(hour=0, minute=0, second=0, microsecond=0)
 
 
 def _period_bounds(

@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from app.models.okr import (
     Objective, KeyResult, KeyResultCheckIn, Initiative, OkrTask, OkrAction, KRDirection, KRCadence,
 )
-from app.crud.report import BUSINESS_TZ, _aware, _start_of_day
+from app.core.timezone import BUSINESS_TZ, aware as _aware, start_of_day as _start_of_day
 
 CADENCE_DAYS: dict[KRCadence, int] = {
     KRCadence.WEEKLY: 7,

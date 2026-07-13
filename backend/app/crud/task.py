@@ -11,6 +11,7 @@ from app.crud.task_history import record_change
 from app.crud.task_dependency import blocking_dependencies
 from app.core.automation_engine import evaluate_and_run
 from app.core.exceptions import TaskBlockedError, TaskDateRangeError
+from app.core.timezone import BUSINESS_TZ
 from app.schemas.task import TaskCreate, TaskUpdate
 
 BLOCKING_STATUSES = {TaskStatus.IN_PROGRESS, TaskStatus.IN_REVIEW, TaskStatus.DONE}
@@ -113,8 +114,9 @@ def get_tasks(
 
 
 def get_today_tasks(db: Session, user_id: int, workspace_id: int | None = None) -> list[Task]:
-    today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
-    today_end = today_start.replace(hour=23, minute=59, second=59)
+    now_local = datetime.now(timezone.utc).astimezone(BUSINESS_TZ)
+    today_start = now_local.replace(hour=0, minute=0, second=0, microsecond=0)
+    today_end = today_start.replace(hour=23, minute=59, second=59, microsecond=999999)
     query = db.query(Task).filter(
         Task.assignee_id == user_id,
         Task.due_date >= today_start,
