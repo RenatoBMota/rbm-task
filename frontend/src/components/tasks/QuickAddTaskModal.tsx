@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Calendar, Flag, Bell, Tag, MapPin, Repeat, Plus, Check, Paperclip, X } from "lucide-react";
-import { format, addDays, startOfDay } from "date-fns";
+import { format, addDays, startOfDay, endOfDay } from "date-fns";
 import { clsx } from "clsx";
 import api from "@/lib/api";
 import { useLabels } from "@/hooks/useLabels";
@@ -137,7 +137,7 @@ export function QuickAddTaskModal({
                     <button
                       className="text-left text-sm px-2 py-1.5 rounded hover:bg-surface-50 hover:dark:bg-surface-800 flex items-center gap-2"
                       onClick={() => {
-                        setDueDate(toLocalInputValue(startOfDay(new Date())));
+                        setDueDate(toLocalInputValue(endOfDay(new Date())));
                         setOpenPopover(null);
                       }}
                     >
@@ -146,7 +146,7 @@ export function QuickAddTaskModal({
                     <button
                       className="text-left text-sm px-2 py-1.5 rounded hover:bg-surface-50 hover:dark:bg-surface-800 flex items-center gap-2"
                       onClick={() => {
-                        setDueDate(toLocalInputValue(startOfDay(addDays(new Date(), 1))));
+                        setDueDate(toLocalInputValue(endOfDay(addDays(new Date(), 1))));
                         setOpenPopover(null);
                       }}
                     >
@@ -155,7 +155,7 @@ export function QuickAddTaskModal({
                     <button
                       className="text-left text-sm px-2 py-1.5 rounded hover:bg-surface-50 hover:dark:bg-surface-800 flex items-center gap-2"
                       onClick={() => {
-                        setDueDate(toLocalInputValue(startOfDay(addDays(new Date(), 7))));
+                        setDueDate(toLocalInputValue(endOfDay(addDays(new Date(), 7))));
                         setOpenPopover(null);
                       }}
                     >

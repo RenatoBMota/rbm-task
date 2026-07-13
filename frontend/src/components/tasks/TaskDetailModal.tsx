@@ -26,7 +26,7 @@ import {
   Users2,
   Coins,
 } from "lucide-react";
-import { format, addDays, startOfDay, differenceInCalendarDays } from "date-fns";
+import { format, addDays, endOfDay, differenceInCalendarDays } from "date-fns";
 import { clsx } from "clsx";
 import api from "@/lib/api";
 import { PRIORITY_COLORS, TASK_STATUSES } from "@/lib/types";
@@ -607,7 +607,7 @@ export function TaskDetailModal({ taskId, onClose }: { taskId: number; onClose: 
                   <button
                     className="text-left text-sm px-2 py-1.5 rounded hover:bg-surface-50 hover:dark:bg-surface-800 flex items-center gap-2"
                     onClick={() => {
-                      updateTask.mutate({ due_date: startOfDay(new Date()).toISOString() });
+                      updateTask.mutate({ due_date: endOfDay(new Date()).toISOString() });
                       setOpenProp(null);
                     }}
                   >
@@ -616,7 +616,7 @@ export function TaskDetailModal({ taskId, onClose }: { taskId: number; onClose: 
                   <button
                     className="text-left text-sm px-2 py-1.5 rounded hover:bg-surface-50 hover:dark:bg-surface-800 flex items-center gap-2"
                     onClick={() => {
-                      updateTask.mutate({ due_date: startOfDay(addDays(new Date(), 1)).toISOString() });
+                      updateTask.mutate({ due_date: endOfDay(addDays(new Date(), 1)).toISOString() });
                       setOpenProp(null);
                     }}
                   >
@@ -625,7 +625,7 @@ export function TaskDetailModal({ taskId, onClose }: { taskId: number; onClose: 
                   <button
                     className="text-left text-sm px-2 py-1.5 rounded hover:bg-surface-50 hover:dark:bg-surface-800 flex items-center gap-2"
                     onClick={() => {
-                      updateTask.mutate({ due_date: startOfDay(addDays(new Date(), 7)).toISOString() });
+                      updateTask.mutate({ due_date: endOfDay(addDays(new Date(), 7)).toISOString() });
                       setOpenProp(null);
                     }}
                   >
