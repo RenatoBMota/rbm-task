@@ -11,8 +11,11 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { clsx } from "clsx";
 import api from "@/lib/api";
 import { StatTile } from "@/components/ui/StatTile";
+import { useWorkspaces } from "@/hooks/useWorkspaces";
 import { INDICATOR_TYPE_LABELS, KR_CADENCE_LABELS } from "@/lib/types";
-import type { KeyResultDetail, InitiativeDetail, OkrTaskDetail, IndicatorType, KRDirection, KRCadence } from "@/lib/types";
+import type { KeyResultDetail, InitiativeDetail, OkrTaskDetail, IndicatorType, KRDirection, KRCadence, WorkspaceMember } from "@/lib/types";
+
+const EMPTY_MEMBERS: WorkspaceMember[] = [];
 
 const TREND_ICON = { up: TrendingUp, down: TrendingDown, flat: Minus };
 
@@ -323,6 +326,7 @@ export default function KeyResultDetailPage() {
   const router = useRouter();
   const krId = Number(params.krId);
   const qc = useQueryClient();
+  const { currentWorkspaceId } = useWorkspaces();
   const [showCheckinForm, setShowCheckinForm] = useState(false);
   const [checkin, setCheckin] = useState({ period_start: "", period_end: "", value: 0, comment: "" });
   const [showInitiativeForm, setShowInitiativeForm] = useState(false);
@@ -336,12 +340,19 @@ export default function KeyResultDetailPage() {
     cadence: "weekly" as KRCadence,
     baseline_value: 0,
     target_value: 0,
+    owner_id: null as number | null,
   });
 
   const { data: kr } = useQuery<KeyResultDetail>({
     queryKey: ["okr", "kr", krId],
     queryFn: () => api.get(`/okr/key-results/${krId}`).then((r) => r.data),
     enabled: !!krId,
+  });
+
+  const { data: members = EMPTY_MEMBERS } = useQuery<WorkspaceMember[]>({
+    queryKey: ["workspace-members", currentWorkspaceId],
+    queryFn: () => api.get(`/workspaces/${currentWorkspaceId}/members`).then((r) => r.data),
+    enabled: !!currentWorkspaceId,
   });
 
   const updateKrMutation = useMutation({
@@ -367,6 +378,7 @@ export default function KeyResultDetailPage() {
       cadence: kr.cadence,
       baseline_value: kr.baseline_value,
       target_value: kr.target_value,
+      owner_id: kr.owner_id,
     });
     setShowKrEditForm(true);
   }
@@ -413,7 +425,8 @@ export default function KeyResultDetailPage() {
             <Target size={20} className="text-primary-600" /> {kr.code} — {kr.title}
           </h1>
           <p className="text-xs text-slate-400 mt-1">
-            {INDICATOR_TYPE_LABELS[kr.indicator_type]} · Cadência {KR_CADENCE_LABELS[kr.cadence]}
+            {INDICATOR_TYPE_LABELS[kr.indicator_type]} · Cadência {KR_CADENCE_LABELS[kr.cadence]} · Responsável:{" "}
+            {members.find((m) => m.user_id === kr.owner_id)?.full_name ?? "sem responsável"}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -463,6 +476,16 @@ export default function KeyResultDetailPage() {
               value={krForm.target_value || ""}
               onChange={(e) => setKrForm((p) => ({ ...p, target_value: Number(e.target.value) }))}
             />
+            <select
+              className="input"
+              value={krForm.owner_id ?? ""}
+              onChange={(e) => setKrForm((p) => ({ ...p, owner_id: e.target.value ? Number(e.target.value) : null }))}
+            >
+              <option value="">Sem responsável</option>
+              {members.map((m) => (
+                <option key={m.user_id} value={m.user_id}>{m.full_name}</option>
+              ))}
+            </select>
           </div>
           <div className="flex gap-2 mt-3">
             <button className="btn-primary" disabled={updateKrMutation.isPending} onClick={() => updateKrMutation.mutate()}>

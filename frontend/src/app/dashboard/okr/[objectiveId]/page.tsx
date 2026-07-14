@@ -7,8 +7,11 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Plus, TrendingUp, TrendingDown, Minus, Pencil, Trash2 } from "lucide-react";
 import { clsx } from "clsx";
 import api from "@/lib/api";
+import { useWorkspaces } from "@/hooks/useWorkspaces";
 import { INDICATOR_TYPE_LABELS, KR_CADENCE_LABELS } from "@/lib/types";
-import type { ObjectiveDetail, IndicatorType, KRDirection, KRCadence, KeyResultDetail } from "@/lib/types";
+import type { ObjectiveDetail, IndicatorType, KRDirection, KRCadence, KeyResultDetail, WorkspaceMember } from "@/lib/types";
+
+const EMPTY_MEMBERS: WorkspaceMember[] = [];
 
 const TREND_ICON = { up: TrendingUp, down: TrendingDown, flat: Minus };
 
@@ -17,6 +20,7 @@ export default function ObjectiveDetailPage() {
   const router = useRouter();
   const objectiveId = Number(params.objectiveId);
   const qc = useQueryClient();
+  const { currentWorkspaceId } = useWorkspaces();
   const [showForm, setShowForm] = useState(false);
   const [editingKrId, setEditingKrId] = useState<number | null>(null);
   const [form, setForm] = useState({
@@ -27,6 +31,13 @@ export default function ObjectiveDetailPage() {
     cadence: "weekly" as KRCadence,
     baseline_value: 0,
     target_value: 0,
+    owner_id: null as number | null,
+  });
+
+  const { data: members = EMPTY_MEMBERS } = useQuery<WorkspaceMember[]>({
+    queryKey: ["workspace-members", currentWorkspaceId],
+    queryFn: () => api.get(`/workspaces/${currentWorkspaceId}/members`).then((r) => r.data),
+    enabled: !!currentWorkspaceId,
   });
 
   const [showObjectiveForm, setShowObjectiveForm] = useState(false);
@@ -62,7 +73,7 @@ export default function ObjectiveDetailPage() {
   function closeKrForm() {
     setShowForm(false);
     setEditingKrId(null);
-    setForm({ code: "", title: "", indicator_type: "quantity", direction: "increase", cadence: "weekly", baseline_value: 0, target_value: 0 });
+    setForm({ code: "", title: "", indicator_type: "quantity", direction: "increase", cadence: "weekly", baseline_value: 0, target_value: 0, owner_id: null });
   }
 
   async function openEditKr(krId: number) {
@@ -75,6 +86,7 @@ export default function ObjectiveDetailPage() {
       cadence: data.cadence,
       baseline_value: data.baseline_value,
       target_value: data.target_value,
+      owner_id: data.owner_id,
     });
     setEditingKrId(krId);
     setShowForm(true);
@@ -244,6 +256,16 @@ export default function ObjectiveDetailPage() {
                 value={form.target_value || ""}
                 onChange={(e) => setForm((p) => ({ ...p, target_value: Number(e.target.value) }))}
               />
+              <select
+                className="input"
+                value={form.owner_id ?? ""}
+                onChange={(e) => setForm((p) => ({ ...p, owner_id: e.target.value ? Number(e.target.value) : null }))}
+              >
+                <option value="">Sem responsável</option>
+                {members.map((m) => (
+                  <option key={m.user_id} value={m.user_id}>{m.full_name}</option>
+                ))}
+              </select>
             </div>
             <div className="flex gap-2 mt-3">
               <button
