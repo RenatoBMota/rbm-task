@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Target, Plus, AlertTriangle, ListChecks, ChevronRight } from "lucide-react";
+import { Target, Plus, AlertTriangle, ListChecks, ChevronRight, Pencil, Trash2 } from "lucide-react";
 import { clsx } from "clsx";
 import api from "@/lib/api";
 import { useWorkspaces } from "@/hooks/useWorkspaces";
@@ -17,6 +17,7 @@ export default function OkrPage() {
   const qc = useQueryClient();
   const { currentWorkspaceId } = useWorkspaces();
   const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState({ title: "", description: "", start_date: "", end_date: "" });
 
   const { data: summary } = useQuery<OkrExecutiveSummary>({
@@ -52,10 +53,49 @@ export default function OkrPage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["okr", "objectives", currentWorkspaceId] });
       qc.invalidateQueries({ queryKey: ["okr", "executive-summary", currentWorkspaceId] });
-      setShowForm(false);
-      setForm({ title: "", description: "", start_date: "", end_date: "" });
+      closeForm();
     },
   });
+
+  const updateMutation = useMutation({
+    mutationFn: () =>
+      api.put(`/okr/objectives/${editingId}`, {
+        title: form.title,
+        description: form.description || null,
+        start_date: new Date(form.start_date).toISOString(),
+        end_date: new Date(form.end_date).toISOString(),
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["okr", "objectives", currentWorkspaceId] });
+      qc.invalidateQueries({ queryKey: ["okr", "executive-summary", currentWorkspaceId] });
+      closeForm();
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: number) => api.delete(`/okr/objectives/${id}`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["okr", "objectives", currentWorkspaceId] });
+      qc.invalidateQueries({ queryKey: ["okr", "executive-summary", currentWorkspaceId] });
+    },
+  });
+
+  function closeForm() {
+    setShowForm(false);
+    setEditingId(null);
+    setForm({ title: "", description: "", start_date: "", end_date: "" });
+  }
+
+  function openEdit(o: Objective) {
+    setEditingId(o.id);
+    setForm({
+      title: o.title,
+      description: o.description ?? "",
+      start_date: o.start_date.slice(0, 10),
+      end_date: o.end_date.slice(0, 10),
+    });
+    setShowForm(true);
+  }
 
   const isFormReady = !!form.title && !!form.start_date && !!form.end_date;
 
@@ -68,7 +108,13 @@ export default function OkrPage() {
           </h1>
           <p className="text-slate-500 text-sm mt-0.5">Objetivos, resultados-chave e execução operacional</p>
         </div>
-        <button className="btn-primary flex items-center gap-2" onClick={() => setShowForm(true)}>
+        <button
+          className="btn-primary flex items-center gap-2"
+          onClick={() => {
+            setEditingId(null);
+            setShowForm(true);
+          }}
+        >
           <Plus size={18} /> Novo Objetivo
         </button>
       </div>
@@ -103,7 +149,7 @@ export default function OkrPage() {
 
       {showForm && (
         <div className="card p-6 mb-6">
-          <h2 className="font-semibold mb-4 text-slate-900 dark:text-white">Novo Objetivo</h2>
+          <h2 className="font-semibold mb-4 text-slate-900 dark:text-white">{editingId ? "Editar Objetivo" : "Novo Objetivo"}</h2>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
             <input
               className="input lg:col-span-2"
@@ -139,12 +185,12 @@ export default function OkrPage() {
           <div className="flex gap-2 mt-4">
             <button
               className="btn-primary"
-              disabled={!isFormReady || createMutation.isPending}
-              onClick={() => createMutation.mutate()}
+              disabled={!isFormReady || createMutation.isPending || updateMutation.isPending}
+              onClick={() => (editingId ? updateMutation.mutate() : createMutation.mutate())}
             >
-              {createMutation.isPending ? "Criando..." : "Criar"}
+              {createMutation.isPending || updateMutation.isPending ? "Salvando..." : editingId ? "Salvar" : "Criar"}
             </button>
-            <button className="btn-secondary" onClick={() => setShowForm(false)}>
+            <button className="btn-secondary" onClick={closeForm}>
               Cancelar
             </button>
           </div>
@@ -195,7 +241,27 @@ export default function OkrPage() {
                   {new Date(o.start_date).toLocaleDateString("pt-BR")} — {new Date(o.end_date).toLocaleDateString("pt-BR")}
                 </p>
               </div>
-              <ChevronRight size={18} className="text-slate-300 flex-shrink-0" />
+              <div className="flex items-center gap-1 flex-shrink-0">
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    openEdit(o);
+                  }}
+                  className="text-slate-300 hover:text-primary-600 p-1.5"
+                >
+                  <Pencil size={15} />
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    deleteMutation.mutate(o.id);
+                  }}
+                  className="text-slate-300 hover:text-red-500 p-1.5"
+                >
+                  <Trash2 size={15} />
+                </button>
+                <ChevronRight size={18} className="text-slate-300" />
+              </div>
             </Link>
           ))}
         </div>

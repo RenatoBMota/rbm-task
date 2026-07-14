@@ -2,21 +2,23 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Plus, TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { ArrowLeft, Plus, TrendingUp, TrendingDown, Minus, Pencil, Trash2 } from "lucide-react";
 import { clsx } from "clsx";
 import api from "@/lib/api";
 import { INDICATOR_TYPE_LABELS, KR_CADENCE_LABELS } from "@/lib/types";
-import type { ObjectiveDetail, IndicatorType, KRDirection, KRCadence } from "@/lib/types";
+import type { ObjectiveDetail, IndicatorType, KRDirection, KRCadence, KeyResultDetail } from "@/lib/types";
 
 const TREND_ICON = { up: TrendingUp, down: TrendingDown, flat: Minus };
 
 export default function ObjectiveDetailPage() {
   const params = useParams();
+  const router = useRouter();
   const objectiveId = Number(params.objectiveId);
   const qc = useQueryClient();
   const [showForm, setShowForm] = useState(false);
+  const [editingKrId, setEditingKrId] = useState<number | null>(null);
   const [form, setForm] = useState({
     code: "",
     title: "",
@@ -26,6 +28,9 @@ export default function ObjectiveDetailPage() {
     baseline_value: 0,
     target_value: 0,
   });
+
+  const [showObjectiveForm, setShowObjectiveForm] = useState(false);
+  const [objectiveForm, setObjectiveForm] = useState({ title: "", description: "", start_date: "", end_date: "" });
 
   const { data: objective } = useQuery<ObjectiveDetail>({
     queryKey: ["okr", "objective", objectiveId],
@@ -37,10 +42,73 @@ export default function ObjectiveDetailPage() {
     mutationFn: () => api.post(`/okr/objectives/${objectiveId}/key-results`, form),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["okr", "objective", objectiveId] });
-      setShowForm(false);
-      setForm({ code: "", title: "", indicator_type: "quantity", direction: "increase", cadence: "weekly", baseline_value: 0, target_value: 0 });
+      closeKrForm();
     },
   });
+
+  const updateKrMutation = useMutation({
+    mutationFn: () => api.put(`/okr/key-results/${editingKrId}`, form),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["okr", "objective", objectiveId] });
+      closeKrForm();
+    },
+  });
+
+  const deleteKrMutation = useMutation({
+    mutationFn: (krId: number) => api.delete(`/okr/key-results/${krId}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["okr", "objective", objectiveId] }),
+  });
+
+  function closeKrForm() {
+    setShowForm(false);
+    setEditingKrId(null);
+    setForm({ code: "", title: "", indicator_type: "quantity", direction: "increase", cadence: "weekly", baseline_value: 0, target_value: 0 });
+  }
+
+  async function openEditKr(krId: number) {
+    const { data } = await api.get<KeyResultDetail>(`/okr/key-results/${krId}`);
+    setForm({
+      code: data.code,
+      title: data.title,
+      indicator_type: data.indicator_type,
+      direction: data.direction,
+      cadence: data.cadence,
+      baseline_value: data.baseline_value,
+      target_value: data.target_value,
+    });
+    setEditingKrId(krId);
+    setShowForm(true);
+  }
+
+  const updateObjectiveMutation = useMutation({
+    mutationFn: () =>
+      api.put(`/okr/objectives/${objectiveId}`, {
+        title: objectiveForm.title,
+        description: objectiveForm.description || null,
+        start_date: new Date(objectiveForm.start_date).toISOString(),
+        end_date: new Date(objectiveForm.end_date).toISOString(),
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["okr", "objective", objectiveId] });
+      setShowObjectiveForm(false);
+    },
+  });
+
+  const deleteObjectiveMutation = useMutation({
+    mutationFn: () => api.delete(`/okr/objectives/${objectiveId}`),
+    onSuccess: () => router.push("/dashboard/okr"),
+  });
+
+  function openEditObjective() {
+    if (!objective) return;
+    setObjectiveForm({
+      title: objective.title,
+      description: objective.description ?? "",
+      start_date: objective.start_date.slice(0, 10),
+      end_date: objective.end_date.slice(0, 10),
+    });
+    setShowObjectiveForm(true);
+  }
 
   if (!objective) return <p className="text-slate-400 text-sm p-4">Carregando...</p>;
 
@@ -54,13 +122,69 @@ export default function ObjectiveDetailPage() {
         <ArrowLeft size={15} /> Voltar aos objetivos
       </Link>
 
-      <div className="mb-5">
-        <h1 className="text-xl lg:text-2xl font-bold text-slate-900 dark:text-white">{objective.title}</h1>
-        {objective.description && <p className="text-slate-500 text-sm mt-1">{objective.description}</p>}
-        <p className="text-xs text-slate-400 mt-1">
-          {new Date(objective.start_date).toLocaleDateString("pt-BR")} até {new Date(objective.end_date).toLocaleDateString("pt-BR")}
-        </p>
+      <div className="mb-5 flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-xl lg:text-2xl font-bold text-slate-900 dark:text-white">{objective.title}</h1>
+          {objective.description && <p className="text-slate-500 text-sm mt-1">{objective.description}</p>}
+          <p className="text-xs text-slate-400 mt-1">
+            {new Date(objective.start_date).toLocaleDateString("pt-BR")} até {new Date(objective.end_date).toLocaleDateString("pt-BR")}
+          </p>
+        </div>
+        <div className="flex items-center gap-1 flex-shrink-0">
+          <button onClick={openEditObjective} className="text-slate-400 hover:text-primary-600 p-1.5">
+            <Pencil size={16} />
+          </button>
+          <button onClick={() => deleteObjectiveMutation.mutate()} className="text-slate-400 hover:text-red-500 p-1.5">
+            <Trash2 size={16} />
+          </button>
+        </div>
       </div>
+
+      {showObjectiveForm && (
+        <div className="card p-6 mb-6">
+          <h2 className="font-semibold mb-4 text-slate-900 dark:text-white">Editar Objetivo</h2>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+            <input
+              className="input lg:col-span-2"
+              placeholder="Título do objetivo"
+              value={objectiveForm.title}
+              onChange={(e) => setObjectiveForm((p) => ({ ...p, title: e.target.value }))}
+            />
+            <textarea
+              className="input lg:col-span-2"
+              placeholder="Descrição (opcional)"
+              value={objectiveForm.description}
+              onChange={(e) => setObjectiveForm((p) => ({ ...p, description: e.target.value }))}
+            />
+            <div>
+              <label className="text-xs text-slate-400 mb-1 block">Início</label>
+              <input
+                type="date"
+                className="input"
+                value={objectiveForm.start_date}
+                onChange={(e) => setObjectiveForm((p) => ({ ...p, start_date: e.target.value }))}
+              />
+            </div>
+            <div>
+              <label className="text-xs text-slate-400 mb-1 block">Fim</label>
+              <input
+                type="date"
+                className="input"
+                value={objectiveForm.end_date}
+                onChange={(e) => setObjectiveForm((p) => ({ ...p, end_date: e.target.value }))}
+              />
+            </div>
+          </div>
+          <div className="flex gap-2 mt-4">
+            <button className="btn-primary" disabled={updateObjectiveMutation.isPending} onClick={() => updateObjectiveMutation.mutate()}>
+              {updateObjectiveMutation.isPending ? "Salvando..." : "Salvar"}
+            </button>
+            <button className="btn-secondary" onClick={() => setShowObjectiveForm(false)}>
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="card p-4 mb-6">
         <div className="flex items-center justify-between mb-2">
@@ -75,13 +199,20 @@ export default function ObjectiveDetailPage() {
       <div className="card mb-6">
         <div className="panel-header">
           <span className="font-semibold text-slate-900 dark:text-white">Key Results</span>
-          <button className="btn-primary flex items-center gap-1.5 py-1.5 text-sm" onClick={() => setShowForm(true)}>
+          <button
+            className="btn-primary flex items-center gap-1.5 py-1.5 text-sm"
+            onClick={() => {
+              setEditingKrId(null);
+              setShowForm(true);
+            }}
+          >
             <Plus size={14} /> Novo KR
           </button>
         </div>
 
         {showForm && (
           <div className="p-4 border-b border-surface-100 dark:border-slate-800">
+            <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">{editingKrId ? "Editar KR" : "Novo KR"}</h3>
             <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
               <input className="input" placeholder="Código (ex: 8.1)" value={form.code} onChange={(e) => setForm((p) => ({ ...p, code: e.target.value }))} />
               <input className="input lg:col-span-2" placeholder="Título do KR" value={form.title} onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))} />
@@ -115,10 +246,14 @@ export default function ObjectiveDetailPage() {
               />
             </div>
             <div className="flex gap-2 mt-3">
-              <button className="btn-primary" disabled={!isFormReady || createMutation.isPending} onClick={() => createMutation.mutate()}>
-                {createMutation.isPending ? "Criando..." : "Criar"}
+              <button
+                className="btn-primary"
+                disabled={!isFormReady || createMutation.isPending || updateKrMutation.isPending}
+                onClick={() => (editingKrId ? updateKrMutation.mutate() : createMutation.mutate())}
+              >
+                {createMutation.isPending || updateKrMutation.isPending ? "Salvando..." : editingKrId ? "Salvar" : "Criar"}
               </button>
-              <button className="btn-secondary" onClick={() => setShowForm(false)}>Cancelar</button>
+              <button className="btn-secondary" onClick={closeKrForm}>Cancelar</button>
             </div>
           </div>
         )}
@@ -135,6 +270,7 @@ export default function ObjectiveDetailPage() {
                   <th>Meta</th>
                   <th>Progresso</th>
                   <th>Tendência</th>
+                  <th></th>
                 </tr>
               </thead>
               <tbody>
@@ -158,6 +294,16 @@ export default function ObjectiveDetailPage() {
                           size={16}
                           className={kr.trend_direction === "flat" ? "text-slate-400" : isFavorable ? "text-status-good" : "text-status-critical"}
                         />
+                      </td>
+                      <td>
+                        <div className="flex items-center gap-1">
+                          <button onClick={() => openEditKr(kr.id)} className="text-slate-300 hover:text-primary-600 p-1">
+                            <Pencil size={14} />
+                          </button>
+                          <button onClick={() => deleteKrMutation.mutate(kr.id)} className="text-slate-300 hover:text-red-500 p-1">
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
