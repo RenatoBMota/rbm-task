@@ -19,6 +19,7 @@ import {
   Zap,
   LogOut,
   Target,
+  Sparkles,
 } from "lucide-react";
 import { clsx } from "clsx";
 import { useAuthStore } from "@/store/auth";
@@ -34,6 +35,7 @@ const PRIMARY = [
 
 const MORE_ITEMS = [
   { href: "/dashboard/okr", label: "OKRs", icon: Target },
+  { href: "/dashboard/ai-tasks", label: "Tarefas por IA", icon: Sparkles },
   { href: "/dashboard/projects", label: "Projetos", icon: FolderOpen },
   { href: "/dashboard/gantt", label: "Gantt", icon: GanttChartSquare },
   { href: "/dashboard/resources", label: "Recursos", icon: Users2 },

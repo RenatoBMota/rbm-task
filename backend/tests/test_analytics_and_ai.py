@@ -1,4 +1,6 @@
 from tests.conftest import register_and_login, auth_headers, get_default_workspace_id, create_project
+from app.core.config import settings
+import app.api.v1.ai as ai_module
 
 
 def _create_task(client, headers, **overrides):
@@ -61,3 +63,93 @@ def test_ai_risk_tasks_empty_without_due_dates(client):
     response = client.get("/api/v1/ai/risk-tasks", headers=headers)
     assert response.status_code == 200
     assert response.json() == []
+
+
+def test_extract_tasks_returns_503_when_gemini_not_configured(client, monkeypatch):
+    monkeypatch.setattr(settings, "GEMINI_API_KEY", None)
+    token = register_and_login(client)
+    headers = auth_headers(token)
+    workspace_id = get_default_workspace_id(client, headers)
+
+    response = client.post(
+        "/api/v1/ai/extract-tasks",
+        json={"text": "Precisamos revisar o contrato até sexta.", "workspace_id": workspace_id},
+        headers=headers,
+    )
+    assert response.status_code == 503
+
+
+def test_extract_tasks_matches_project_and_normalizes_suggestions(client, monkeypatch):
+    monkeypatch.setattr(settings, "GEMINI_API_KEY", "fake-key-for-test")
+    token = register_and_login(client)
+    headers = auth_headers(token)
+    workspace_id = get_default_workspace_id(client, headers)
+    project = create_project(client, headers, workspace_id, name="Logística Norte")
+
+    def fake_extract(text, project_names, now=None):
+        assert "Logística Norte" in project_names
+        return [
+            {
+                "title": "Revisar contrato do fornecedor",
+                "description": "Conferir cláusulas de reajuste",
+                "priority": "P1",
+                "due_date": "2026-08-01",
+                "estimated_minutes": 60,
+                "project_name": "Logística Norte",
+            },
+            {
+                "title": "Sem projeto e prioridade inválida",
+                "priority": "URGENTE",
+                "project_name": "Projeto Que Não Existe",
+            },
+            {"title": ""},
+        ]
+
+    monkeypatch.setattr(ai_module, "extract_task_suggestions", fake_extract)
+
+    response = client.post(
+        "/api/v1/ai/extract-tasks",
+        json={"text": "Ata de reunião de ontem...", "workspace_id": workspace_id},
+        headers=headers,
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert len(body) == 2  # empty-title suggestion dropped
+
+    first = body[0]
+    assert first["title"] == "Revisar contrato do fornecedor"
+    assert first["priority"] == "P1"
+    assert first["due_date"] == "2026-08-01"
+    assert first["estimated_minutes"] == 60
+    assert first["suggested_project_id"] == project["id"]
+    assert first["suggested_project_name"] == "Logística Norte"
+
+    second = body[1]
+    assert second["priority"] == "P4"  # invalid priority falls back to default
+    assert second["suggested_project_id"] is None  # unmatched project name
+
+
+def test_extract_tasks_requires_workspace_membership(client, monkeypatch):
+    monkeypatch.setattr(settings, "GEMINI_API_KEY", "fake-key-for-test")
+    token_a = register_and_login(client, email="a@rbm.com")
+    workspace_a = get_default_workspace_id(client, auth_headers(token_a))
+
+    token_b = register_and_login(client, email="b@rbm.com")
+    response = client.post(
+        "/api/v1/ai/extract-tasks",
+        json={"text": "Texto qualquer", "workspace_id": workspace_a},
+        headers=auth_headers(token_b),
+    )
+    assert response.status_code == 404
+
+
+def test_extract_tasks_rejects_empty_text(client, monkeypatch):
+    monkeypatch.setattr(settings, "GEMINI_API_KEY", "fake-key-for-test")
+    token = register_and_login(client)
+    headers = auth_headers(token)
+    workspace_id = get_default_workspace_id(client, headers)
+
+    response = client.post(
+        "/api/v1/ai/extract-tasks", json={"text": "", "workspace_id": workspace_id}, headers=headers
+    )
+    assert response.status_code == 422

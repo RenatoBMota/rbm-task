@@ -454,3 +454,13 @@ export const DEPENDENCY_TYPE_SHORT: Record<DependencyType, string> = {
   finish_finish: "FF",
   start_finish: "SF",
 };
+
+export interface TaskSuggestion {
+  title: string;
+  description: string | null;
+  priority: TaskPriority;
+  due_date: string | null;
+  estimated_minutes: number | null;
+  suggested_project_id: number | null;
+  suggested_project_name: string | null;
+}

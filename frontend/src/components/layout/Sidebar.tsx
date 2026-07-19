@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, FolderOpen, CheckSquare, KanbanSquare, Calendar, BarChart3, Zap, LogOut, Tag, GanttChartSquare, Users2, FileBarChart, Target } from "lucide-react";
+import { LayoutDashboard, FolderOpen, CheckSquare, KanbanSquare, Calendar, BarChart3, Zap, LogOut, Tag, GanttChartSquare, Users2, FileBarChart, Target, Sparkles } from "lucide-react";
 import { useAuthStore } from "@/store/auth";
 import { WorkspaceSwitcher } from "@/components/workspace/WorkspaceSwitcher";
 import { clsx } from "clsx";
@@ -12,6 +12,7 @@ const navItems = [
   { href: "/dashboard/okr", label: "OKRs", icon: Target },
   { href: "/dashboard/projects", label: "Projetos", icon: FolderOpen },
   { href: "/dashboard/tasks", label: "Tarefas", icon: CheckSquare },
+  { href: "/dashboard/ai-tasks", label: "Tarefas por IA", icon: Sparkles },
   { href: "/dashboard/kanban", label: "Kanban", icon: KanbanSquare },
   { href: "/dashboard/gantt", label: "Gantt", icon: GanttChartSquare },
   { href: "/dashboard/resources", label: "Recursos", icon: Users2 },
