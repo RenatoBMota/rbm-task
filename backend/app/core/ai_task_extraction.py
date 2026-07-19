@@ -4,16 +4,16 @@ import httpx
 from app.core.config import settings
 from app.core.timezone import BUSINESS_TZ
 
-GEMINI_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
+XAI_ENDPOINT = "https://api.x.ai/v1/chat/completions"
 
 VALID_PRIORITIES = {"P1", "P2", "P3", "P4"}
 
 
-class GeminiNotConfiguredError(Exception):
+class AiNotConfiguredError(Exception):
     pass
 
 
-class GeminiRequestError(Exception):
+class AiRequestError(Exception):
     pass
 
 
@@ -50,33 +50,39 @@ Texto:
 def extract_task_suggestions(
     text: str, project_names: list[str], now: datetime | None = None
 ) -> list[dict]:
-    if not settings.GEMINI_API_KEY:
-        raise GeminiNotConfiguredError("GEMINI_API_KEY não configurada no servidor.")
+    if not settings.XAI_API_KEY:
+        raise AiNotConfiguredError("XAI_API_KEY não configurada no servidor.")
 
     now_local = (now or datetime.now(timezone.utc)).astimezone(BUSINESS_TZ)
     prompt = _build_prompt(text, project_names, now_local)
 
-    url = GEMINI_ENDPOINT.format(model=settings.GEMINI_MODEL)
     payload = {
-        "contents": [{"parts": [{"text": prompt}]}],
-        "generationConfig": {"temperature": 0.2, "responseMimeType": "application/json"},
+        "model": settings.XAI_MODEL,
+        "messages": [{"role": "user", "content": prompt}],
+        "temperature": 0.2,
+        "response_format": {"type": "json_object"},
     }
     try:
-        response = httpx.post(url, params={"key": settings.GEMINI_API_KEY}, json=payload, timeout=30.0)
+        response = httpx.post(
+            XAI_ENDPOINT,
+            headers={"Authorization": f"Bearer {settings.XAI_API_KEY}"},
+            json=payload,
+            timeout=30.0,
+        )
         response.raise_for_status()
     except httpx.HTTPError as exc:
-        raise GeminiRequestError(f"Falha ao chamar a API do Gemini: {exc}") from exc
+        raise AiRequestError(f"Falha ao chamar a API do Grok (xAI): {exc}") from exc
 
     data = response.json()
     try:
-        raw_text = data["candidates"][0]["content"]["parts"][0]["text"]
+        raw_text = data["choices"][0]["message"]["content"]
         parsed = json.loads(raw_text)
         tasks = parsed.get("tasks", [])
     except (KeyError, IndexError, json.JSONDecodeError, TypeError) as exc:
-        raise GeminiRequestError(f"Resposta da IA em formato inesperado: {exc}") from exc
+        raise AiRequestError(f"Resposta da IA em formato inesperado: {exc}") from exc
 
     if not isinstance(tasks, list):
-        raise GeminiRequestError("Resposta da IA em formato inesperado: 'tasks' não é uma lista.")
+        raise AiRequestError("Resposta da IA em formato inesperado: 'tasks' não é uma lista.")
 
     return tasks
 

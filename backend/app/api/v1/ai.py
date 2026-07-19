@@ -7,7 +7,7 @@ from app.crud.task import get_tasks
 from app.crud.project import get_projects
 from app.core.ai_engine import priority_suggestions, estimate_minutes, risk_tasks
 from app.core.ai_task_extraction import (
-    extract_task_suggestions, normalize_suggestion, GeminiNotConfiguredError, GeminiRequestError,
+    extract_task_suggestions, normalize_suggestion, AiNotConfiguredError, AiRequestError,
 )
 from app.models.task import TaskPriority
 from app.models.user import User
@@ -58,9 +58,9 @@ def extract_tasks(
 
     try:
         raw_suggestions = extract_task_suggestions(body.text, [p.name for p in projects])
-    except GeminiNotConfiguredError as exc:
+    except AiNotConfiguredError as exc:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc))
-    except GeminiRequestError as exc:
+    except AiRequestError as exc:
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc))
 
     suggestions = []

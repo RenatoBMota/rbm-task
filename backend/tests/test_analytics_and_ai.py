@@ -66,7 +66,7 @@ def test_ai_risk_tasks_empty_without_due_dates(client):
 
 
 def test_extract_tasks_returns_503_when_gemini_not_configured(client, monkeypatch):
-    monkeypatch.setattr(settings, "GEMINI_API_KEY", None)
+    monkeypatch.setattr(settings, "XAI_API_KEY", None)
     token = register_and_login(client)
     headers = auth_headers(token)
     workspace_id = get_default_workspace_id(client, headers)
@@ -80,7 +80,7 @@ def test_extract_tasks_returns_503_when_gemini_not_configured(client, monkeypatc
 
 
 def test_extract_tasks_matches_project_and_normalizes_suggestions(client, monkeypatch):
-    monkeypatch.setattr(settings, "GEMINI_API_KEY", "fake-key-for-test")
+    monkeypatch.setattr(settings, "XAI_API_KEY", "fake-key-for-test")
     token = register_and_login(client)
     headers = auth_headers(token)
     workspace_id = get_default_workspace_id(client, headers)
@@ -130,7 +130,7 @@ def test_extract_tasks_matches_project_and_normalizes_suggestions(client, monkey
 
 
 def test_extract_tasks_requires_workspace_membership(client, monkeypatch):
-    monkeypatch.setattr(settings, "GEMINI_API_KEY", "fake-key-for-test")
+    monkeypatch.setattr(settings, "XAI_API_KEY", "fake-key-for-test")
     token_a = register_and_login(client, email="a@rbm.com")
     workspace_a = get_default_workspace_id(client, auth_headers(token_a))
 
@@ -144,7 +144,7 @@ def test_extract_tasks_requires_workspace_membership(client, monkeypatch):
 
 
 def test_extract_tasks_rejects_empty_text(client, monkeypatch):
-    monkeypatch.setattr(settings, "GEMINI_API_KEY", "fake-key-for-test")
+    monkeypatch.setattr(settings, "XAI_API_KEY", "fake-key-for-test")
     token = register_and_login(client)
     headers = auth_headers(token)
     workspace_id = get_default_workspace_id(client, headers)
