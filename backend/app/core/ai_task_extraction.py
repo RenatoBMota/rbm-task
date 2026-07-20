@@ -1,12 +1,15 @@
 import json
+import re
 from datetime import datetime, timezone
 import httpx
 from app.core.config import settings
 from app.core.timezone import BUSINESS_TZ
 
-XAI_ENDPOINT = "https://api.x.ai/v1/chat/completions"
+ANTHROPIC_ENDPOINT = "https://api.anthropic.com/v1/messages"
+ANTHROPIC_VERSION = "2023-06-01"
 
 VALID_PRIORITIES = {"P1", "P2", "P3", "P4"}
+_JSON_FENCE_RE = re.compile(r"^```(?:json)?\s*|\s*```$", re.MULTILINE)
 
 
 class AiNotConfiguredError(Exception):
@@ -50,33 +53,38 @@ Texto:
 def extract_task_suggestions(
     text: str, project_names: list[str], now: datetime | None = None
 ) -> list[dict]:
-    if not settings.XAI_API_KEY:
-        raise AiNotConfiguredError("XAI_API_KEY não configurada no servidor.")
+    if not settings.ANTHROPIC_API_KEY:
+        raise AiNotConfiguredError("ANTHROPIC_API_KEY não configurada no servidor.")
 
     now_local = (now or datetime.now(timezone.utc)).astimezone(BUSINESS_TZ)
     prompt = _build_prompt(text, project_names, now_local)
 
     payload = {
-        "model": settings.XAI_MODEL,
-        "messages": [{"role": "user", "content": prompt}],
+        "model": settings.ANTHROPIC_MODEL,
+        "max_tokens": 2048,
         "temperature": 0.2,
-        "response_format": {"type": "json_object"},
+        "messages": [{"role": "user", "content": prompt}],
     }
     try:
         response = httpx.post(
-            XAI_ENDPOINT,
-            headers={"Authorization": f"Bearer {settings.XAI_API_KEY}"},
+            ANTHROPIC_ENDPOINT,
+            headers={
+                "x-api-key": settings.ANTHROPIC_API_KEY,
+                "anthropic-version": ANTHROPIC_VERSION,
+                "content-type": "application/json",
+            },
             json=payload,
             timeout=30.0,
         )
         response.raise_for_status()
     except httpx.HTTPError as exc:
-        raise AiRequestError(f"Falha ao chamar a API do Grok (xAI): {exc}") from exc
+        raise AiRequestError(f"Falha ao chamar a API do Claude: {exc}") from exc
 
     data = response.json()
     try:
-        raw_text = data["choices"][0]["message"]["content"]
-        parsed = json.loads(raw_text)
+        raw_text = data["content"][0]["text"]
+        cleaned = _JSON_FENCE_RE.sub("", raw_text.strip())
+        parsed = json.loads(cleaned)
         tasks = parsed.get("tasks", [])
     except (KeyError, IndexError, json.JSONDecodeError, TypeError) as exc:
         raise AiRequestError(f"Resposta da IA em formato inesperado: {exc}") from exc

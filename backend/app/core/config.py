@@ -31,8 +31,8 @@ class Settings(BaseSettings):
 
     CORS_ORIGINS: list[str] = ["http://localhost:3000"]
 
-    XAI_API_KEY: str | None = None
-    XAI_MODEL: str = "grok-4-fast"
+    ANTHROPIC_API_KEY: str | None = None
+    ANTHROPIC_MODEL: str = "claude-haiku-4-5-20251001"
 
     class Config:
         env_file = ".env"

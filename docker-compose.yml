@@ -66,8 +66,8 @@ services:
       SMTP_USE_TLS: ${SMTP_USE_TLS:-true}
       SMTP_FROM_EMAIL: ${SMTP_FROM_EMAIL:-no-reply@rbmtask.com}
       SMTP_FROM_NAME: ${SMTP_FROM_NAME:-RBM TASK}
-      XAI_API_KEY: ${XAI_API_KEY:-}
-      XAI_MODEL: ${XAI_MODEL:-grok-4-fast}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-haiku-4-5-20251001}
       ENVIRONMENT: ${ENVIRONMENT:-production}
       CORS_ORIGINS: '["https://task.renatomota.online"]'
     depends_on:
