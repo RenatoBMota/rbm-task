@@ -1,5 +1,4 @@
 from sqlalchemy.orm import Session
-from app.models.task import Task
 from app.models.task_dependency import TaskDependency, DependencyType, DependencyHardness
 
 
@@ -62,15 +61,3 @@ def update_dependency(
 def remove_dependency(db: Session, dependency: TaskDependency) -> None:
     db.delete(dependency)
     db.commit()
-
-
-def blocking_dependencies(db: Session, task_id: int) -> list[Task]:
-    dependency_ids = (
-        db.query(TaskDependency.depends_on_id)
-        .filter(
-            TaskDependency.task_id == task_id,
-            TaskDependency.dependency_type == DependencyType.FINISH_START,
-        )
-        .scalar_subquery()
-    )
-    return db.query(Task).filter(Task.id.in_(dependency_ids), Task.is_completed == False).all()

@@ -8,13 +8,10 @@ from app.models.notification import NotificationType
 from app.models.automation import TriggerEvent
 from app.crud.notification import create_notification
 from app.crud.task_history import record_change
-from app.crud.task_dependency import blocking_dependencies
 from app.core.automation_engine import evaluate_and_run
-from app.core.exceptions import TaskBlockedError, TaskDateRangeError
+from app.core.exceptions import TaskDateRangeError
 from app.core.timezone import BUSINESS_TZ
 from app.schemas.task import TaskCreate, TaskUpdate
-
-BLOCKING_STATUSES = {TaskStatus.IN_PROGRESS, TaskStatus.IN_REVIEW, TaskStatus.DONE}
 
 
 def _aware(dt: datetime) -> datetime:
@@ -52,12 +49,6 @@ def _next_due_date(due_date: datetime, recurrence: TaskRecurrence) -> datetime:
     if recurrence == TaskRecurrence.WEEKLY:
         return due_date + timedelta(weeks=1)
     return _add_months(due_date, 1)
-
-
-def _assert_not_blocked(db: Session, task: Task) -> None:
-    blockers = blocking_dependencies(db, task.id)
-    if blockers:
-        raise TaskBlockedError([t.title for t in blockers])
 
 
 def _create_next_occurrence(db: Session, task: Task) -> Task:
@@ -191,9 +182,6 @@ def create_task(db: Session, task_in: TaskCreate, creator_id: int) -> Task:
 
 
 def move_task(db: Session, task: Task, status: TaskStatus, position: int, changed_by_id: int | None = None) -> Task:
-    if status in BLOCKING_STATUSES and status != task.status:
-        _assert_not_blocked(db, task)
-
     status_changed = task.status != status
     previous_status = task.status
     became_completed = status == TaskStatus.DONE and not task.is_completed
@@ -234,11 +222,6 @@ def update_task(db: Session, task: Task, task_in: TaskUpdate, changed_by_id: int
         update_data["status"] = TaskStatus.DONE
     elif became_uncompleted and "status" not in update_data and task.status == TaskStatus.DONE:
         update_data["status"] = TaskStatus.TODO
-    target_status = update_data.get("status", task.status)
-    wants_progress = became_completed or target_status in BLOCKING_STATUSES
-
-    if wants_progress and (became_completed or target_status != task.status):
-        _assert_not_blocked(db, task)
 
     if became_completed:
         update_data["completed_at"] = datetime.now(timezone.utc)

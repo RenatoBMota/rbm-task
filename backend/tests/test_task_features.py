@@ -49,7 +49,7 @@ def test_task_history_records_status_change(client):
     assert any(h["field_name"] == "status" and h["new_value"] == "in_progress" for h in history)
 
 
-def test_task_dependency_blocks_status_change(client):
+def test_task_with_incomplete_dependency_can_still_be_moved_freely(client):
     token = register_and_login(client)
     headers = auth_headers(token)
     project = _create_project(client, headers)
@@ -66,17 +66,13 @@ def test_task_dependency_blocks_status_change(client):
         headers=headers,
     )
 
-    blocked_move = client.patch(
-        f"/api/v1/tasks/{task['id']}/move", json={"status": "in_progress", "position": 0}, headers=headers
+    # Dependencies are informational (used for Gantt scheduling) and no longer
+    # gate Kanban drag-and-drop: the blocker is still incomplete, but the move succeeds.
+    response = client.patch(
+        f"/api/v1/tasks/{task['id']}/move", json={"status": "done", "position": 0}, headers=headers
     )
-    assert blocked_move.status_code == 400
-
-    client.put(f"/api/v1/tasks/{blocker['id']}", json={"is_completed": True}, headers=headers)
-
-    allowed_move = client.patch(
-        f"/api/v1/tasks/{task['id']}/move", json={"status": "in_progress", "position": 0}, headers=headers
-    )
-    assert allowed_move.status_code == 200
+    assert response.status_code == 200
+    assert response.json()["status"] == "done"
 
 
 def test_marking_task_completed_moves_status_to_done_on_kanban(client):
@@ -124,29 +120,6 @@ def test_moving_task_to_done_column_marks_it_completed(client):
     )
     assert moved_back.json()["is_completed"] is False
     assert moved_back.json()["completed_at"] is None
-
-
-def test_blocked_move_returns_clear_error_detail(client):
-    token = register_and_login(client)
-    headers = auth_headers(token)
-    project = _create_project(client, headers)
-    blocker = client.post(
-        "/api/v1/tasks", json={"title": "Bloqueadora", "project_id": project["id"]}, headers=headers
-    ).json()
-    task = client.post(
-        "/api/v1/tasks", json={"title": "Bloqueada", "project_id": project["id"]}, headers=headers
-    ).json()
-    client.post(
-        f"/api/v1/tasks/{task['id']}/dependencies",
-        json={"depends_on_id": blocker["id"]},
-        headers=headers,
-    )
-
-    response = client.patch(
-        f"/api/v1/tasks/{task['id']}/move", json={"status": "done", "position": 0}, headers=headers
-    )
-    assert response.status_code == 400
-    assert "Bloqueadora" in response.json()["detail"]
 
 
 def test_duplicate_project_copies_tasks_as_template(client):

@@ -17,7 +17,7 @@ from app.crud.resource import (
     get_resource, get_assignment, get_task_assignments, assign_resource, update_assignment, remove_assignment,
 )
 from app.api.access import require_project_member, require_task_access, require_workspace_member
-from app.core.exceptions import TaskBlockedError, TaskDateRangeError
+from app.core.exceptions import TaskDateRangeError
 from app.models.user import User
 from app.schemas.task import TaskCreate, TaskUpdate, TaskOut, TaskMove, TaskDuplicate
 from app.schemas.task_history import TaskHistoryOut
@@ -122,7 +122,7 @@ def update(
     task = require_task_access(db, task_id, current_user.id)
     try:
         return update_task(db, task, task_in, changed_by_id=current_user.id)
-    except (TaskBlockedError, TaskDateRangeError) as exc:
+    except TaskDateRangeError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
 
 
@@ -134,10 +134,7 @@ def move(
     current_user: User = Depends(get_current_user),
 ):
     task = require_task_access(db, task_id, current_user.id)
-    try:
-        return move_task(db, task, move_in.status, move_in.position, changed_by_id=current_user.id)
-    except TaskBlockedError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+    return move_task(db, task, move_in.status, move_in.position, changed_by_id=current_user.id)
 
 
 @router.get("/{task_id}/history", response_model=list[TaskHistoryOut])
