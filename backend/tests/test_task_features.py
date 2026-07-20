@@ -79,6 +79,76 @@ def test_task_dependency_blocks_status_change(client):
     assert allowed_move.status_code == 200
 
 
+def test_marking_task_completed_moves_status_to_done_on_kanban(client):
+    token = register_and_login(client)
+    headers = auth_headers(token)
+    project = _create_project(client, headers)
+    task = client.post(
+        "/api/v1/tasks", json={"title": "T", "project_id": project["id"]}, headers=headers
+    ).json()
+    client.patch(
+        f"/api/v1/tasks/{task['id']}/move", json={"status": "in_progress", "position": 0}, headers=headers
+    )
+
+    response = client.put(f"/api/v1/tasks/{task['id']}", json={"is_completed": True}, headers=headers)
+    assert response.status_code == 200
+    assert response.json()["status"] == "done"
+
+    board = client.get(
+        "/api/v1/tasks/board", params={"project_id": project["id"]}, headers=headers
+    ).json()
+    done_task = next(t for t in board if t["id"] == task["id"])
+    assert done_task["status"] == "done"
+
+    uncompleted = client.put(f"/api/v1/tasks/{task['id']}", json={"is_completed": False}, headers=headers)
+    assert uncompleted.json()["status"] == "todo"
+
+
+def test_moving_task_to_done_column_marks_it_completed(client):
+    token = register_and_login(client)
+    headers = auth_headers(token)
+    project = _create_project(client, headers)
+    task = client.post(
+        "/api/v1/tasks", json={"title": "T", "project_id": project["id"]}, headers=headers
+    ).json()
+
+    response = client.patch(
+        f"/api/v1/tasks/{task['id']}/move", json={"status": "done", "position": 0}, headers=headers
+    )
+    assert response.status_code == 200
+    assert response.json()["is_completed"] is True
+    assert response.json()["completed_at"] is not None
+
+    moved_back = client.patch(
+        f"/api/v1/tasks/{task['id']}/move", json={"status": "in_progress", "position": 0}, headers=headers
+    )
+    assert moved_back.json()["is_completed"] is False
+    assert moved_back.json()["completed_at"] is None
+
+
+def test_blocked_move_returns_clear_error_detail(client):
+    token = register_and_login(client)
+    headers = auth_headers(token)
+    project = _create_project(client, headers)
+    blocker = client.post(
+        "/api/v1/tasks", json={"title": "Bloqueadora", "project_id": project["id"]}, headers=headers
+    ).json()
+    task = client.post(
+        "/api/v1/tasks", json={"title": "Bloqueada", "project_id": project["id"]}, headers=headers
+    ).json()
+    client.post(
+        f"/api/v1/tasks/{task['id']}/dependencies",
+        json={"depends_on_id": blocker["id"]},
+        headers=headers,
+    )
+
+    response = client.patch(
+        f"/api/v1/tasks/{task['id']}/move", json={"status": "done", "position": 0}, headers=headers
+    )
+    assert response.status_code == 400
+    assert "Bloqueadora" in response.json()["detail"]
+
+
 def test_duplicate_project_copies_tasks_as_template(client):
     token = register_and_login(client)
     headers = auth_headers(token)

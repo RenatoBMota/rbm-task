@@ -196,6 +196,8 @@ def move_task(db: Session, task: Task, status: TaskStatus, position: int, change
 
     status_changed = task.status != status
     previous_status = task.status
+    became_completed = status == TaskStatus.DONE and not task.is_completed
+    became_uncompleted = previous_status == TaskStatus.DONE and status != TaskStatus.DONE and task.is_completed
     siblings = (
         db.query(Task)
         .filter(Task.status == status, Task.id != task.id)
@@ -206,17 +208,32 @@ def move_task(db: Session, task: Task, status: TaskStatus, position: int, change
     for index, sibling in enumerate(siblings):
         sibling.status = status
         sibling.position = index
+    if became_completed:
+        task.is_completed = True
+        task.completed_at = datetime.now(timezone.utc)
+    elif became_uncompleted:
+        task.is_completed = False
+        task.completed_at = None
     db.commit()
     db.refresh(task)
     if status_changed:
         record_change(db, task.id, "status", previous_status.value, status.value, changed_by_id)
         evaluate_and_run(db, TriggerEvent.TASK_STATUS_CHANGED, task)
+    if became_completed:
+        evaluate_and_run(db, TriggerEvent.TASK_COMPLETED, task)
+        if task.recurrence != TaskRecurrence.NONE:
+            _create_next_occurrence(db, task)
     return task
 
 
 def update_task(db: Session, task: Task, task_in: TaskUpdate, changed_by_id: int | None = None) -> Task:
     update_data = task_in.model_dump(exclude_unset=True)
     became_completed = update_data.get("is_completed") is True and not task.is_completed
+    became_uncompleted = update_data.get("is_completed") is False and task.is_completed
+    if became_completed and "status" not in update_data:
+        update_data["status"] = TaskStatus.DONE
+    elif became_uncompleted and "status" not in update_data and task.status == TaskStatus.DONE:
+        update_data["status"] = TaskStatus.TODO
     target_status = update_data.get("status", task.status)
     wants_progress = became_completed or target_status in BLOCKING_STATUSES
 

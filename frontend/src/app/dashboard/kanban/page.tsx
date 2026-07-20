@@ -49,6 +49,7 @@ export default function KanbanPage() {
   const [activeTask, setActiveTask] = useState<Task | null>(null);
   const [selectedTaskId, setSelectedTaskId] = useState<number | null>(null);
   const [quickAddStatus, setQuickAddStatus] = useState<TaskStatus | null>(null);
+  const [moveError, setMoveError] = useState("");
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
@@ -85,6 +86,15 @@ export default function KanbanPage() {
   const moveMutation = useMutation({
     mutationFn: ({ id, status, position }: { id: number; status: TaskStatus; position: number }) =>
       api.patch(`/tasks/${id}/move`, { status, position }),
+    onSuccess: () => setMoveError(""),
+    onError: (error: unknown) => {
+      const msg = (error as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+      setMoveError(msg || "Não foi possível mover a tarefa.");
+      // A failed move can refetch data that's structurally identical to what's already
+      // cached, so React Query keeps the same reference and the sync effect never re-fires.
+      // Revert the optimistic local state directly from the still-correct source data.
+      setColumns(groupByStatus(tasks));
+    },
     onSettled: () => qc.invalidateQueries({ queryKey: ["tasks", "board", projectId] }),
   });
 
@@ -160,6 +170,15 @@ export default function KanbanPage() {
           )}
         </div>
       </div>
+
+      {moveError && (
+        <div className="mb-4 flex items-center justify-between text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">
+          <span>{moveError}</span>
+          <button onClick={() => setMoveError("")} className="text-red-400 hover:text-red-600 text-xs font-medium">
+            Fechar
+          </button>
+        </div>
+      )}
 
       {projectId === null ? (
         <p className="text-slate-400">Selecione um projeto ou a Agenda diária para usar o quadro Kanban.</p>
