@@ -8,7 +8,9 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
-  closestCorners,
+  pointerWithin,
+  rectIntersection,
+  type CollisionDetection,
   type DragEndEvent,
   type DragStartEvent,
 } from "@dnd-kit/core";
@@ -109,6 +111,15 @@ export default function KanbanPage() {
     setActiveTask(task ?? null);
   };
 
+  // pointerWithin (containment) rather than closestCorners (corner-distance): a flex-stretched
+  // empty column sitting next to a tall one has far-away corners, which closestCorners weighs
+  // against it even when the pointer is literally inside its bounds. Falls back to
+  // rectIntersection for the rare case the pointer briefly lands outside every droppable.
+  const collisionDetection: CollisionDetection = (args) => {
+    const pointerCollisions = pointerWithin(args);
+    return pointerCollisions.length > 0 ? pointerCollisions : rectIntersection(args);
+  };
+
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     setActiveTask(null);
@@ -185,7 +196,7 @@ export default function KanbanPage() {
       ) : (
         <DndContext
           sensors={sensors}
-          collisionDetection={closestCorners}
+          collisionDetection={collisionDetection}
           onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}
         >
