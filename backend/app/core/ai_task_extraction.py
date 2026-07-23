@@ -56,6 +56,14 @@ def extract_task_suggestions(
     if not settings.ANTHROPIC_API_KEY:
         raise AiNotConfiguredError("ANTHROPIC_API_KEY não configurada no servidor.")
 
+    try:
+        settings.ANTHROPIC_API_KEY.encode("ascii")
+    except UnicodeEncodeError as exc:
+        raise AiRequestError(
+            "ANTHROPIC_API_KEY contém caracteres inválidos (provavelmente um travessão ou aspas "
+            "tipográficas introduzidos ao colar a chave). Reabra o .env e recole a chave original."
+        ) from exc
+
     now_local = (now or datetime.now(timezone.utc)).astimezone(BUSINESS_TZ)
     prompt = _build_prompt(text, project_names, now_local)
 
@@ -77,7 +85,7 @@ def extract_task_suggestions(
             timeout=30.0,
         )
         response.raise_for_status()
-    except httpx.HTTPError as exc:
+    except (httpx.HTTPError, UnicodeError) as exc:
         raise AiRequestError(f"Falha ao chamar a API do Claude: {exc}") from exc
 
     data = response.json()

@@ -79,6 +79,24 @@ def test_extract_tasks_returns_503_when_gemini_not_configured(client, monkeypatc
     assert response.status_code == 503
 
 
+def test_extract_tasks_returns_502_when_key_has_non_ascii_characters(client, monkeypatch):
+    # Guards against a real production incident: a mangled paste (e.g. a typographic dash swapped
+    # in for a hyphen) corrupted the key, which crashed with an unhandled 500 deep inside httpx's
+    # header encoding instead of a clean, actionable error.
+    monkeypatch.setattr(settings, "ANTHROPIC_API_KEY", "sk-ant-api03-broken–key")
+    token = register_and_login(client)
+    headers = auth_headers(token)
+    workspace_id = get_default_workspace_id(client, headers)
+
+    response = client.post(
+        "/api/v1/ai/extract-tasks",
+        json={"text": "Precisamos revisar o contrato até sexta.", "workspace_id": workspace_id},
+        headers=headers,
+    )
+    assert response.status_code == 502
+    assert "caracteres inválidos" in response.json()["detail"]
+
+
 def test_extract_tasks_matches_project_and_normalizes_suggestions(client, monkeypatch):
     monkeypatch.setattr(settings, "ANTHROPIC_API_KEY", "fake-key-for-test")
     token = register_and_login(client)
