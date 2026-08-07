@@ -153,6 +153,9 @@ export default function WhatsAppPage() {
   function openChat(chat: WhatsAppChatSummary) {
     setSelectedChat(chat);
     setMobileShowThread(true);
+    qc.setQueryData<WhatsAppChatSummary[]>(["whatsapp-chats"], (prev) =>
+      prev?.map((c) => (c.jid === chat.jid ? { ...c, unread_count: 0 } : c))
+    );
   }
 
   const errorBanner = error ? (
@@ -253,9 +256,9 @@ export default function WhatsAppPage() {
                     <span className="text-xs text-slate-500 dark:text-slate-400 truncate">
                       {chat.last_message_text || "Sem mensagens ainda"}
                     </span>
-                    {chat.pending_count > 0 && (
+                    {chat.unread_count > 0 && (
                       <span className="bg-green-600 text-white text-[10px] font-semibold rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center shrink-0">
-                        {chat.pending_count}
+                        {chat.unread_count}
                       </span>
                     )}
                   </div>

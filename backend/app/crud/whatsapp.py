@@ -97,12 +97,12 @@ def get_chat_summaries(db: Session, connection_id: int) -> list[dict]:
             .order_by(WhatsAppMessage.whatsapp_timestamp.desc())
             .first()
         )
-        pending_count = (
+        unread_count = (
             db.query(WhatsAppMessage)
             .filter(
                 WhatsAppMessage.connection_id == connection_id,
                 WhatsAppMessage.chat_jid == row.chat_jid,
-                WhatsAppMessage.is_processed == False,
+                WhatsAppMessage.is_read == False,
                 WhatsAppMessage.is_from_me == False,
             )
             .count()
@@ -113,10 +113,20 @@ def get_chat_summaries(db: Session, connection_id: int) -> list[dict]:
                 "name": row.chat_name,
                 "last_message_text": last_message.text if last_message else None,
                 "last_message_at": row.last_at,
-                "pending_count": pending_count,
+                "unread_count": unread_count,
             }
         )
     return summaries
+
+
+def mark_chat_read(db: Session, connection_id: int, chat_jid: str) -> None:
+    db.query(WhatsAppMessage).filter(
+        WhatsAppMessage.connection_id == connection_id,
+        WhatsAppMessage.chat_jid == chat_jid,
+        WhatsAppMessage.is_read == False,
+        WhatsAppMessage.is_from_me == False,
+    ).update({"is_read": True})
+    db.commit()
 
 
 def get_messages_by_ids(db: Session, connection_id: int, message_ids: list[int]) -> list[WhatsAppMessage]:

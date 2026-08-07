@@ -17,7 +17,7 @@ class WhatsAppChatSummary(BaseModel):
     name: str
     last_message_text: str | None = None
     last_message_at: datetime | None = None
-    pending_count: int = 0
+    unread_count: int = 0
 
 
 class WhatsAppMessageOut(BaseModel):
@@ -28,6 +28,7 @@ class WhatsAppMessageOut(BaseModel):
     text: str
     whatsapp_timestamp: datetime
     is_from_me: bool
+    is_read: bool
     is_processed: bool
 
     model_config = {"from_attributes": True}

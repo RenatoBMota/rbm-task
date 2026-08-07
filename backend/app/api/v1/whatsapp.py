@@ -77,7 +77,7 @@ def list_chats(db: Session = Depends(get_db), current_user: User = Depends(get_c
                 "name": chat["name"],
                 "last_message_text": None,
                 "last_message_at": None,
-                "pending_count": 0,
+                "unread_count": 0,
             }
 
     ordered = sorted(summaries.values(), key=lambda s: s["last_message_at"] or datetime.min, reverse=True)
@@ -91,7 +91,9 @@ def list_messages(
     connection = whatsapp_crud.get_connection(db, current_user.id)
     if not connection:
         return []
-    return whatsapp_crud.get_recent_messages(db, connection.id, chat_jid)
+    messages = whatsapp_crud.get_recent_messages(db, connection.id, chat_jid)
+    whatsapp_crud.mark_chat_read(db, connection.id, chat_jid)
+    return messages
 
 
 @router.post("/send", status_code=status.HTTP_204_NO_CONTENT)

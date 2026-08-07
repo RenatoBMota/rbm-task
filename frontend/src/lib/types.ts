@@ -478,7 +478,7 @@ export interface WhatsAppChatSummary {
   name: string;
   last_message_text: string | null;
   last_message_at: string | null;
-  pending_count: number;
+  unread_count: number;
 }
 
 export interface WhatsAppMessage {
@@ -489,5 +489,6 @@ export interface WhatsAppMessage {
   text: string;
   whatsapp_timestamp: string;
   is_from_me: boolean;
+  is_read: boolean;
   is_processed: boolean;
 }

@@ -50,6 +50,7 @@ class WhatsAppMessage(Base):
     text: Mapped[str] = mapped_column(Text, nullable=False)
     whatsapp_timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     is_from_me: Mapped[bool] = mapped_column(Boolean, default=False)
+    is_read: Mapped[bool] = mapped_column(Boolean, default=False)
     is_processed: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)

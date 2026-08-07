@@ -111,7 +111,7 @@ def test_chats_lists_summaries_ordered_by_last_message(client, monkeypatch):
     chats = response.json()
     assert [c["jid"] for c in chats] == ["999@g.us", "123@g.us"]
     assert chats[0]["last_message_text"] == "mensagem mais recente"
-    assert chats[0]["pending_count"] == 1
+    assert chats[0]["unread_count"] == 1
 
 
 def test_messages_lists_history_for_a_chat(client, monkeypatch):
@@ -133,6 +133,32 @@ def test_messages_lists_history_for_a_chat(client, monkeypatch):
     assert body[0]["sender_name"] == "João"
     assert body[0]["chat_jid"] == "123@g.us"
     assert body[0]["is_processed"] is False
+
+
+def test_opening_a_chat_marks_it_read_until_a_new_message_arrives(client, monkeypatch):
+    monkeypatch.setattr(settings, "WHATSAPP_WEBHOOK_SECRET", "correct-secret")
+    monkeypatch.setattr(whatsapp_module, "_call_service", lambda method, path, json=None: {"status": "connected", "chats": []})
+
+    token = register_and_login(client)
+    headers = auth_headers(token)
+    user_id = client.get("/api/v1/users/me", headers=headers).json()["id"]
+    client.get("/api/v1/whatsapp/status", headers=headers)
+
+    _send_webhook_message(client, user_id, "123@g.us", "Equipe", "João", "checar estoque", 1700000000)
+
+    chats_before = client.get("/api/v1/whatsapp/chats", headers=headers).json()
+    assert chats_before[0]["unread_count"] == 1
+
+    # Opening the chat (fetching its messages) marks it read.
+    client.get("/api/v1/whatsapp/messages", params={"chat_jid": "123@g.us"}, headers=headers)
+
+    chats_after = client.get("/api/v1/whatsapp/chats", headers=headers).json()
+    assert chats_after[0]["unread_count"] == 0
+
+    # A new message brings the badge back.
+    _send_webhook_message(client, user_id, "123@g.us", "Equipe", "João", "mais uma", 1700000050)
+    chats_final = client.get("/api/v1/whatsapp/chats", headers=headers).json()
+    assert chats_final[0]["unread_count"] == 1
 
 
 def test_send_message_requires_connection(client):
