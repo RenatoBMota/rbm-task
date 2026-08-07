@@ -49,7 +49,10 @@ async function forwardMessage(userId, chatJid, chatName, sender, text, timestamp
 async function startSession(userId) {
   const key = String(userId);
   const existing = sessions.get(key);
-  if (existing && (existing.status === "connected" || existing.status === "qr_pending")) {
+  // Also guard "connecting": a second concurrent socket sharing the same
+  // auth-state files makes WhatsApp see two devices authenticating as one
+  // and kill the session with a "device_removed" conflict.
+  if (existing && (existing.status === "connected" || existing.status === "connecting" || existing.status === "qr_pending")) {
     return existing;
   }
 
