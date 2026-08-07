@@ -78,6 +78,7 @@ async function startSession(userId) {
       session.status = "connected";
       session.qr = null;
       session.phone = sock.user?.id?.split(":")[0] ?? null;
+      console.log(`[wa:${key}] connected as ${session.phone}`);
     }
 
     if (connection === "close") {
@@ -94,6 +95,7 @@ async function startSession(userId) {
   });
 
   sock.ev.on("chats.upsert", (chats) => {
+    console.log(`[wa:${key}] chats.upsert: ${chats.length} chat(s)`);
     for (const chat of chats) {
       if (chat.id && (chat.name || !session.chats.has(chat.id))) {
         session.chats.set(chat.id, chat.name || chatDisplayName(chat.id));
@@ -105,6 +107,7 @@ async function startSession(userId) {
   // chats.upsert, which only fires for individual chat updates) right after
   // the QR scan, as WhatsApp syncs recent chat history to this device.
   sock.ev.on("messaging-history.set", ({ chats, contacts }) => {
+    console.log(`[wa:${key}] messaging-history.set: ${chats?.length ?? 0} chat(s), ${contacts?.length ?? 0} contact(s)`);
     const nameByJid = new Map((contacts || []).map((c) => [c.id, c.name || c.notify]));
     for (const chat of chats || []) {
       if (!chat.id) continue;
