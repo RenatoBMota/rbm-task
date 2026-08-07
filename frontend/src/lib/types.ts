@@ -464,3 +464,18 @@ export interface TaskSuggestion {
   suggested_project_id: number | null;
   suggested_project_name: string | null;
 }
+
+export type WhatsAppStatusValue = "disconnected" | "connecting" | "qr_pending" | "connected";
+
+export interface WhatsAppStatus {
+  status: WhatsAppStatusValue;
+  phone_number: string | null;
+  monitored_chat_jid: string | null;
+  monitored_chat_name: string | null;
+  pending_message_count: number;
+}
+
+export interface WhatsAppChat {
+  jid: string;
+  name: string;
+}

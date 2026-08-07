@@ -1,6 +1,6 @@
 from tests.conftest import register_and_login, auth_headers, get_default_workspace_id, create_project
 from app.core.config import settings
-import app.api.v1.ai as ai_module
+import app.core.ai_task_extraction as ai_extraction_module
 
 
 def _create_task(client, headers, **overrides):
@@ -123,7 +123,7 @@ def test_extract_tasks_matches_project_and_normalizes_suggestions(client, monkey
             {"title": ""},
         ]
 
-    monkeypatch.setattr(ai_module, "extract_task_suggestions", fake_extract)
+    monkeypatch.setattr(ai_extraction_module, "extract_task_suggestions", fake_extract)
 
     response = client.post(
         "/api/v1/ai/extract-tasks",

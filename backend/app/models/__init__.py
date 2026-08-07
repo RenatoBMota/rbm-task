@@ -18,3 +18,4 @@ from app.models.okr import (
     Objective, KeyResult, KeyResultCheckIn, Initiative, OkrTask, OkrAction,
     IndicatorType, KRCadence, KRDirection,
 )
+from app.models.whatsapp import WhatsAppConnection, WhatsAppMessage, WhatsAppConnectionStatus

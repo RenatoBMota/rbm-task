@@ -2,8 +2,10 @@ import json
 import re
 from datetime import datetime, timezone
 import httpx
+from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.core.timezone import BUSINESS_TZ
+from app.crud.project import get_projects
 
 ANTHROPIC_ENDPOINT = "https://api.anthropic.com/v1/messages"
 ANTHROPIC_VERSION = "2023-06-01"
@@ -136,3 +138,30 @@ def normalize_suggestion(item: dict) -> dict | None:
         "estimated_minutes": estimated_minutes,
         "project_name": project_name,
     }
+
+
+def suggest_tasks_for_workspace(db: Session, workspace_id: int, text: str) -> list[dict]:
+    """Extracts task suggestions from text and matches project_name against the workspace's
+    real projects. Shared by the manual paste flow (/ai/extract-tasks) and the WhatsApp
+    buffer flow (/whatsapp/analyze) so both go through identical extraction + matching logic."""
+    projects = get_projects(db, workspace_id=workspace_id, limit=200)
+    projects_by_name = {p.name.strip().lower(): p for p in projects}
+
+    raw_suggestions = extract_task_suggestions(text, [p.name for p in projects])
+
+    suggestions = []
+    for raw in raw_suggestions:
+        item = normalize_suggestion(raw)
+        if not item:
+            continue
+        project = projects_by_name.get((item["project_name"] or "").strip().lower())
+        suggestions.append({
+            "title": item["title"],
+            "description": item["description"],
+            "priority": item["priority"],
+            "due_date": item["due_date"],
+            "estimated_minutes": item["estimated_minutes"],
+            "suggested_project_id": project.id if project else None,
+            "suggested_project_name": project.name if project else None,
+        })
+    return suggestions

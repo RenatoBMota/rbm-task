@@ -4,10 +4,9 @@ from app.core.database import get_db
 from app.api.deps import get_current_user
 from app.api.access import require_workspace_member
 from app.crud.task import get_tasks
-from app.crud.project import get_projects
 from app.core.ai_engine import priority_suggestions, estimate_minutes, risk_tasks
 from app.core.ai_task_extraction import (
-    extract_task_suggestions, normalize_suggestion, AiNotConfiguredError, AiRequestError,
+    suggest_tasks_for_workspace, AiNotConfiguredError, AiRequestError,
 )
 from app.models.task import TaskPriority
 from app.models.user import User
@@ -53,29 +52,9 @@ def extract_tasks(
     current_user: User = Depends(get_current_user),
 ):
     require_workspace_member(db, body.workspace_id, current_user.id)
-    projects = get_projects(db, workspace_id=body.workspace_id, limit=200)
-    projects_by_name = {p.name.strip().lower(): p for p in projects}
-
     try:
-        raw_suggestions = extract_task_suggestions(body.text, [p.name for p in projects])
+        return suggest_tasks_for_workspace(db, body.workspace_id, body.text)
     except AiNotConfiguredError as exc:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc))
     except AiRequestError as exc:
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc))
-
-    suggestions = []
-    for raw in raw_suggestions:
-        item = normalize_suggestion(raw)
-        if not item:
-            continue
-        project = projects_by_name.get((item["project_name"] or "").strip().lower())
-        suggestions.append({
-            "title": item["title"],
-            "description": item["description"],
-            "priority": item["priority"],
-            "due_date": item["due_date"],
-            "estimated_minutes": item["estimated_minutes"],
-            "suggested_project_id": project.id if project else None,
-            "suggested_project_name": project.name if project else None,
-        })
-    return suggestions

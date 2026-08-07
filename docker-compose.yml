@@ -68,6 +68,8 @@ services:
       SMTP_FROM_NAME: ${SMTP_FROM_NAME:-RBM TASK}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-haiku-4-5-20251001}
+      WHATSAPP_SERVICE_URL: http://whatsapp:4000
+      WHATSAPP_WEBHOOK_SECRET: ${WHATSAPP_WEBHOOK_SECRET:-changeme-generate-a-random-secret}
       ENVIRONMENT: ${ENVIRONMENT:-production}
       CORS_ORIGINS: '["https://task.renatomota.online"]'
     depends_on:
@@ -78,6 +80,26 @@ services:
     restart: unless-stopped
     networks:
       - rbm_internal
+
+  whatsapp:
+    build:
+      context: ./whatsapp-service
+      dockerfile: Dockerfile
+    container_name: rbm_whatsapp
+    environment:
+      PORT: 4000
+      SESSIONS_DIR: /app/sessions
+      BACKEND_URL: http://backend:8000
+      WHATSAPP_WEBHOOK_SECRET: ${WHATSAPP_WEBHOOK_SECRET:-changeme-generate-a-random-secret}
+    volumes:
+      - whatsapp_sessions:/app/sessions
+    depends_on:
+      - backend
+    restart: unless-stopped
+    networks:
+      - rbm_internal
+    # Deliberately NOT on nginx/n8n_default - this service must never be reachable from outside
+    # the internal Docker network; only the backend talks to it.
 
   frontend:
     build:
@@ -130,3 +152,4 @@ volumes:
   postgres_data:
   redis_data:
   minio_data:
+  whatsapp_sessions:

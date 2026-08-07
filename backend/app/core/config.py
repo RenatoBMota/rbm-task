@@ -34,6 +34,9 @@ class Settings(BaseSettings):
     ANTHROPIC_API_KEY: str | None = None
     ANTHROPIC_MODEL: str = "claude-haiku-4-5-20251001"
 
+    WHATSAPP_SERVICE_URL: str = "http://whatsapp:4000"
+    WHATSAPP_WEBHOOK_SECRET: str | None = None
+
     class Config:
         env_file = ".env"
         case_sensitive = True

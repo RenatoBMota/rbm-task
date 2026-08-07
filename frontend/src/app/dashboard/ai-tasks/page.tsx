@@ -7,6 +7,7 @@ import { clsx } from "clsx";
 import api from "@/lib/api";
 import { useWorkspaces } from "@/hooks/useWorkspaces";
 import { PRIORITY_OPTIONS } from "@/lib/taskOptions";
+import { WhatsAppPanel } from "@/components/whatsapp/WhatsAppPanel";
 import type { Project, TaskSuggestion, TaskPriority } from "@/lib/types";
 
 const EMPTY_PROJECTS: Project[] = [];
@@ -102,6 +103,16 @@ export default function AiTasksPage() {
           Cole um resumo de reunião ou anotação e a IA sugere tarefas para você revisar e criar
         </p>
       </div>
+
+      {!items && (
+        <WhatsAppPanel
+          workspaceId={currentWorkspaceId}
+          onSuggestions={(suggestions) => {
+            setItems(toReviewItems(suggestions));
+            setCreatedCount(null);
+          }}
+        />
+      )}
 
       {!items && (
         <div className="card p-4 mb-6">
