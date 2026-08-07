@@ -26,6 +26,18 @@ function chatDisplayName(jid, pushName) {
   return pushName || jid.split("@")[0];
 }
 
+// A real name always overwrites whatever's stored (including the raw-JID
+// fallback set by an earlier, name-less sync); without a name, only fill in
+// the fallback if the chat has no entry at all yet.
+function setChatName(session, jid, name) {
+  if (!jid) return;
+  if (name) {
+    session.chats.set(jid, name);
+  } else if (!session.chats.has(jid)) {
+    session.chats.set(jid, chatDisplayName(jid));
+  }
+}
+
 async function forwardMessage(userId, chatJid, chatName, sender, text, timestamp, fromMe) {
   if (!text) return;
   try {
@@ -100,24 +112,39 @@ async function startSession(userId) {
   sock.ev.on("chats.upsert", (chats) => {
     console.log(`[wa:${key}] chats.upsert: ${chats.length} chat(s)`);
     for (const chat of chats) {
-      if (chat.id && (chat.name || !session.chats.has(chat.id))) {
-        session.chats.set(chat.id, chat.name || chatDisplayName(chat.id));
-      }
+      setChatName(session, chat.id, chat.name);
     }
   });
 
   // The bulk list of a user's existing conversations arrives here (not via
   // chats.upsert, which only fires for individual chat updates) right after
-  // the QR scan, as WhatsApp syncs recent chat history to this device.
+  // the QR scan, as WhatsApp syncs recent chat history to this device. Names
+  // are frequently missing from this first batch - they trickle in later via
+  // contacts.upsert / groups.upsert, which are allowed to overwrite the
+  // raw-JID fallback set here.
   sock.ev.on("messaging-history.set", ({ chats, contacts }) => {
     console.log(`[wa:${key}] messaging-history.set: ${chats?.length ?? 0} chat(s), ${contacts?.length ?? 0} contact(s)`);
     const nameByJid = new Map((contacts || []).map((c) => [c.id, c.name || c.notify]));
     for (const chat of chats || []) {
-      if (!chat.id) continue;
-      const name = chat.name || nameByJid.get(chat.id);
-      if (name || !session.chats.has(chat.id)) {
-        session.chats.set(chat.id, name || chatDisplayName(chat.id));
-      }
+      setChatName(session, chat.id, chat.name || nameByJid.get(chat.id));
+    }
+  });
+
+  sock.ev.on("contacts.upsert", (contacts) => {
+    for (const contact of contacts) {
+      setChatName(session, contact.id, contact.name || contact.notify);
+    }
+  });
+
+  sock.ev.on("contacts.update", (contacts) => {
+    for (const contact of contacts) {
+      setChatName(session, contact.id, contact.name || contact.notify);
+    }
+  });
+
+  sock.ev.on("groups.upsert", (groups) => {
+    for (const group of groups) {
+      setChatName(session, group.id, group.subject);
     }
   });
 
@@ -134,9 +161,10 @@ async function startSession(userId) {
 
       const fromMe = !!msg.key.fromMe;
       const sender = fromMe ? "Você" : msg.pushName || "Desconhecido";
-      if (!session.chats.has(chatJid)) {
-        session.chats.set(chatJid, chatDisplayName(chatJid, chatJid.endsWith("@g.us") ? null : sender));
-      }
+      // A sender's pushName is a real name only for 1:1 chats - for groups
+      // it's just who's talking, not the group's name.
+      const realChatName = !chatJid.endsWith("@g.us") && !fromMe ? msg.pushName : undefined;
+      setChatName(session, chatJid, realChatName);
       const chatName = session.chats.get(chatJid);
 
       await forwardMessage(key, chatJid, chatName, sender, text, msg.messageTimestamp, fromMe);
