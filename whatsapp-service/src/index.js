@@ -26,6 +26,11 @@ function chatDisplayName(jid, pushName) {
   return pushName || jid.split("@")[0];
 }
 
+function hasRealName(session, jid) {
+  const current = session.chats.get(jid);
+  return !!current && current !== chatDisplayName(jid);
+}
+
 // A real name always overwrites whatever's stored (including the raw-JID
 // fallback set by an earlier, name-less sync); without a name, only fill in
 // the fallback if the chat has no entry at all yet.
@@ -35,6 +40,24 @@ function setChatName(session, jid, name) {
     session.chats.set(jid, name);
   } else if (!session.chats.has(jid)) {
     session.chats.set(jid, chatDisplayName(jid));
+  }
+}
+
+// groups.upsert only fires reactively for groups WhatsApp happens to push an
+// update for - most groups never get a subject that way. Query it directly.
+async function resolveGroupName(sock, session, jid) {
+  if (!jid || !jid.endsWith("@g.us") || hasRealName(session, jid)) return;
+  try {
+    const meta = await sock.groupMetadata(jid);
+    if (meta?.subject) setChatName(session, jid, meta.subject);
+  } catch (err) {
+    logger.warn({ err: err.message, jid }, "failed to fetch group metadata");
+  }
+}
+
+async function backfillGroupNames(sock, session, jids) {
+  for (const jid of jids) {
+    await resolveGroupName(sock, session, jid);
   }
 }
 
@@ -221,6 +244,13 @@ async function startSession(userId) {
       });
     }
     forwardMessagesBulk(key, entries);
+
+    // Fetch real subjects for every synced group directly - don't block the
+    // message/chat forwarding above on it, names just update a bit later.
+    const groupJids = (chats || []).map((c) => c.id).filter((id) => id?.endsWith("@g.us"));
+    backfillGroupNames(sock, session, groupJids).catch((err) =>
+      logger.warn({ err: err.message }, "group name backfill failed")
+    );
   });
 
   sock.ev.on("contacts.upsert", (contacts) => {
@@ -262,6 +292,9 @@ async function startSession(userId) {
       // it's just who's talking, not the group's name.
       const realChatName = !chatJid.endsWith("@g.us") && !fromMe ? msg.pushName : undefined;
       setChatName(session, chatJid, realChatName);
+      if (chatJid.endsWith("@g.us") && !hasRealName(session, chatJid)) {
+        resolveGroupName(sock, session, chatJid).catch(() => {});
+      }
       const chatName = session.chats.get(chatJid);
 
       await forwardMessage(key, chatJid, chatName, sender, text, msg.messageTimestamp, fromMe);
