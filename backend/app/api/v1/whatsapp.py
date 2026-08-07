@@ -11,8 +11,8 @@ from app.crud import whatsapp as whatsapp_crud
 from app.models.whatsapp import WhatsAppConnectionStatus
 from app.models.user import User
 from app.schemas.whatsapp import (
-    WhatsAppStatusOut, WhatsAppQrOut, WhatsAppChatOut, WhatsAppMonitorRequest, WhatsAppWebhookMessage,
-    WhatsAppAnalyzeRequest, WhatsAppMessageOut,
+    WhatsAppStatusOut, WhatsAppQrOut, WhatsAppChatSummary, WhatsAppMessageOut, WhatsAppSendRequest,
+    WhatsAppWebhookMessage, WhatsAppAnalyzeRequest,
 )
 from app.schemas.ai_tasks import TaskSuggestionOut
 
@@ -25,9 +25,9 @@ def _service_url(path: str) -> str:
     return f"{settings.WHATSAPP_SERVICE_URL}{path}"
 
 
-def _call_service(method: str, path: str) -> dict:
+def _call_service(method: str, path: str, json: dict | None = None) -> dict:
     try:
-        response = httpx.request(method, _service_url(path), timeout=_TIMEOUT)
+        response = httpx.request(method, _service_url(path), json=json, timeout=_TIMEOUT)
         response.raise_for_status()
         return response.json()
     except httpx.HTTPError as exc:
@@ -42,7 +42,7 @@ def connect(db: Session = Depends(get_db), current_user: User = Depends(get_curr
     connection = whatsapp_crud.get_or_create_connection(db, current_user.id)
     _call_service("POST", f"/connect/{current_user.id}")
     whatsapp_crud.set_status(db, connection, WhatsAppConnectionStatus.CONNECTING)
-    return _status_out(db, connection, current_user.id)
+    return _status_out(db, connection)
 
 
 @router.get("/qr", response_model=WhatsAppQrOut)
@@ -58,32 +58,51 @@ def get_status(db: Session = Depends(get_db), current_user: User = Depends(get_c
     live_status = WhatsAppConnectionStatus(live.get("status", "disconnected"))
     if live_status != connection.status or live.get("phone"):
         connection = whatsapp_crud.set_status(db, connection, live_status, phone_number=live.get("phone"))
-    return _status_out(db, connection, current_user.id)
+    return _status_out(db, connection)
 
 
-@router.get("/chats", response_model=list[WhatsAppChatOut])
-def list_chats(current_user: User = Depends(get_current_user)):
-    data = _call_service("GET", f"/chats/{current_user.id}")
-    return [WhatsAppChatOut(**chat) for chat in data.get("chats", [])]
+@router.get("/chats", response_model=list[WhatsAppChatSummary])
+def list_chats(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    connection = whatsapp_crud.get_connection(db, current_user.id)
+    if not connection:
+        return []
+
+    summaries = {s["jid"]: s for s in whatsapp_crud.get_chat_summaries(db, connection.id)}
+
+    live = _call_service("GET", f"/chats/{current_user.id}")
+    for chat in live.get("chats", []):
+        if chat["jid"] not in summaries:
+            summaries[chat["jid"]] = {
+                "jid": chat["jid"],
+                "name": chat["name"],
+                "last_message_text": None,
+                "last_message_at": None,
+                "pending_count": 0,
+            }
+
+    ordered = sorted(summaries.values(), key=lambda s: s["last_message_at"] or datetime.min, reverse=True)
+    return [WhatsAppChatSummary(**s) for s in ordered]
 
 
 @router.get("/messages", response_model=list[WhatsAppMessageOut])
-def list_messages(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    connection = whatsapp_crud.get_connection(db, current_user.id)
-    if not connection or not connection.monitored_chat_jid:
-        return []
-    return whatsapp_crud.get_recent_messages(db, connection.id)
-
-
-@router.post("/monitor", response_model=WhatsAppStatusOut)
-def set_monitored_chat(
-    body: WhatsAppMonitorRequest,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+def list_messages(
+    chat_jid: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ):
-    connection = whatsapp_crud.get_or_create_connection(db, current_user.id)
-    connection = whatsapp_crud.set_monitored_chat(db, connection, body.chat_jid, body.chat_name)
-    return _status_out(db, connection, current_user.id)
+    connection = whatsapp_crud.get_connection(db, current_user.id)
+    if not connection:
+        return []
+    return whatsapp_crud.get_recent_messages(db, connection.id, chat_jid)
+
+
+@router.post("/send", status_code=status.HTTP_204_NO_CONTENT)
+def send_message(
+    body: WhatsAppSendRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
+):
+    connection = whatsapp_crud.get_connection(db, current_user.id)
+    if not connection:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="WhatsApp não conectado.")
+
+    _call_service("POST", f"/send/{current_user.id}", json={"jid": body.chat_jid, "text": body.text})
 
 
 @router.post("/disconnect", response_model=WhatsAppStatusOut)
@@ -91,7 +110,7 @@ def disconnect(db: Session = Depends(get_db), current_user: User = Depends(get_c
     connection = whatsapp_crud.get_or_create_connection(db, current_user.id)
     _call_service("POST", f"/disconnect/{current_user.id}")
     connection = whatsapp_crud.reset_connection(db, connection)
-    return _status_out(db, connection, current_user.id)
+    return _status_out(db, connection)
 
 
 @router.post("/webhook/message", status_code=status.HTTP_204_NO_CONTENT)
@@ -104,20 +123,23 @@ def receive_message(
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Segredo de webhook inválido.")
 
     connection = whatsapp_crud.get_connection(db, body.user_id)
-    if not connection or connection.monitored_chat_jid != body.chat_jid:
+    if not connection:
         return
 
     whatsapp_crud.add_message(
         db,
         connection.id,
+        body.chat_jid,
+        body.chat_name,
         body.sender,
         body.text,
         datetime.fromtimestamp(body.timestamp, tz=timezone.utc),
+        is_from_me=body.from_me,
     )
 
 
 @router.post("/analyze", response_model=list[TaskSuggestionOut])
-def analyze_pending_messages(
+def analyze_messages(
     body: WhatsAppAnalyzeRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -127,7 +149,7 @@ def analyze_pending_messages(
     if not connection:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="WhatsApp não conectado.")
 
-    messages = whatsapp_crud.get_unprocessed_messages(db, connection.id)
+    messages = whatsapp_crud.get_messages_by_ids(db, connection.id, body.message_ids)
     if not messages:
         return []
 
@@ -143,11 +165,9 @@ def analyze_pending_messages(
     return suggestions
 
 
-def _status_out(db: Session, connection, user_id: int) -> WhatsAppStatusOut:
+def _status_out(db: Session, connection) -> WhatsAppStatusOut:
     return WhatsAppStatusOut(
         status=connection.status.value,
         phone_number=connection.phone_number,
-        monitored_chat_jid=connection.monitored_chat_jid,
-        monitored_chat_name=connection.monitored_chat_name,
         pending_message_count=whatsapp_crud.count_unprocessed(db, connection.id),
     )

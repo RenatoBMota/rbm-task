@@ -26,7 +26,7 @@ function chatDisplayName(jid, pushName) {
   return pushName || jid.split("@")[0];
 }
 
-async function forwardMessage(userId, chatJid, chatName, sender, text, timestamp) {
+async function forwardMessage(userId, chatJid, chatName, sender, text, timestamp, fromMe) {
   if (!text) return;
   try {
     await axios.post(
@@ -38,6 +38,7 @@ async function forwardMessage(userId, chatJid, chatName, sender, text, timestamp
         sender,
         text,
         timestamp,
+        from_me: fromMe,
       },
       { headers: { "X-Webhook-Secret": WEBHOOK_SECRET }, timeout: 10000 }
     );
@@ -102,7 +103,7 @@ async function startSession(userId) {
 
   sock.ev.on("messages.upsert", async ({ messages }) => {
     for (const msg of messages) {
-      if (!msg.message || msg.key.fromMe || !msg.key.remoteJid) continue;
+      if (!msg.message || !msg.key.remoteJid) continue;
       const chatJid = msg.key.remoteJid;
       const text =
         msg.message.conversation ||
@@ -111,13 +112,14 @@ async function startSession(userId) {
         "";
       if (!text) continue;
 
-      const sender = msg.pushName || "Desconhecido";
+      const fromMe = !!msg.key.fromMe;
+      const sender = fromMe ? "Você" : msg.pushName || "Desconhecido";
       if (!session.chats.has(chatJid)) {
         session.chats.set(chatJid, chatDisplayName(chatJid, chatJid.endsWith("@g.us") ? null : sender));
       }
       const chatName = session.chats.get(chatJid);
 
-      await forwardMessage(key, chatJid, chatName, sender, text, msg.messageTimestamp);
+      await forwardMessage(key, chatJid, chatName, sender, text, msg.messageTimestamp, fromMe);
     }
   });
 
@@ -153,6 +155,24 @@ app.get("/chats/:userId", (req, res) => {
   if (!session) return res.json({ chats: [] });
   const chats = Array.from(session.chats.entries()).map(([jid, name]) => ({ jid, name }));
   res.json({ chats });
+});
+
+app.post("/send/:userId", async (req, res) => {
+  const session = getSession(req.params.userId);
+  const { jid, text } = req.body || {};
+  if (!session?.sock || session.status !== "connected") {
+    return res.status(409).json({ error: "session not connected" });
+  }
+  if (!jid || !text) {
+    return res.status(400).json({ error: "jid and text are required" });
+  }
+  try {
+    await session.sock.sendMessage(jid, { text });
+    res.json({ ok: true });
+  } catch (err) {
+    logger.error({ err: err.message }, "send message failed");
+    res.status(502).json({ error: "failed to send message" });
+  }
 });
 
 app.post("/disconnect/:userId", async (req, res) => {

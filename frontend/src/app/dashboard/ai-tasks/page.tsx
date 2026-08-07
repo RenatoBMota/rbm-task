@@ -1,14 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Sparkles, Loader2, Check, Trash2, FolderOpen } from "lucide-react";
+import { Sparkles, Loader2, Check, Trash2, FolderOpen, MessageCircle } from "lucide-react";
+import Link from "next/link";
 import { clsx } from "clsx";
 import api from "@/lib/api";
 import { useWorkspaces } from "@/hooks/useWorkspaces";
 import { PRIORITY_OPTIONS } from "@/lib/taskOptions";
-import { WhatsAppPanel } from "@/components/whatsapp/WhatsAppPanel";
 import type { Project, TaskSuggestion, TaskPriority } from "@/lib/types";
+
+const SUGGESTIONS_KEY = "whatsapp_suggestions";
 
 const EMPTY_PROJECTS: Project[] = [];
 
@@ -83,6 +85,19 @@ export default function AiTasksPage() {
   const analyzeError = (analyzeMutation.error as { response?: { data?: { detail?: string } } })?.response?.data
     ?.detail;
 
+  useEffect(() => {
+    const stored = sessionStorage.getItem(SUGGESTIONS_KEY);
+    if (!stored) return;
+    sessionStorage.removeItem(SUGGESTIONS_KEY);
+    try {
+      const suggestions: TaskSuggestion[] = JSON.parse(stored);
+      setItems(toReviewItems(suggestions));
+      setCreatedCount(null);
+    } catch {
+      // ignore malformed sessionStorage payload
+    }
+  }, []);
+
   function updateItem(key: string, patch: Partial<ReviewItem>) {
     setItems((prev) => prev?.map((it) => (it.key === key ? { ...it, ...patch } : it)) ?? null);
   }
@@ -105,13 +120,16 @@ export default function AiTasksPage() {
       </div>
 
       {!items && (
-        <WhatsAppPanel
-          workspaceId={currentWorkspaceId}
-          onSuggestions={(suggestions) => {
-            setItems(toReviewItems(suggestions));
-            setCreatedCount(null);
-          }}
-        />
+        <Link
+          href="/dashboard/whatsapp"
+          className="card p-4 mb-4 flex items-center justify-between hover:bg-surface-50 dark:hover:bg-slate-800/60 transition-colors"
+        >
+          <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
+            <MessageCircle size={18} className="text-green-600" />
+            Leia suas conversas do WhatsApp e escolha mensagens para virar tarefa
+          </div>
+          <span className="btn-secondary text-sm">Abrir WhatsApp</span>
+        </Link>
       )}
 
       {!items && (

@@ -6,7 +6,7 @@ import app.api.v1.whatsapp as whatsapp_module
 def test_connect_creates_connection_and_calls_service(client, monkeypatch):
     calls = []
     monkeypatch.setattr(
-        whatsapp_module, "_call_service", lambda method, path: calls.append((method, path)) or {}
+        whatsapp_module, "_call_service", lambda method, path, json=None: calls.append((method, path)) or {}
     )
 
     token = register_and_login(client)
@@ -23,7 +23,7 @@ def test_connect_creates_connection_and_calls_service(client, monkeypatch):
 
 def test_status_syncs_phone_and_status_from_service(client, monkeypatch):
     monkeypatch.setattr(
-        whatsapp_module, "_call_service", lambda method, path: {"status": "connected", "phone": "5511999998888"}
+        whatsapp_module, "_call_service", lambda method, path, json=None: {"status": "connected", "phone": "5511999998888"}
     )
 
     token = register_and_login(client)
@@ -38,7 +38,7 @@ def test_status_syncs_phone_and_status_from_service(client, monkeypatch):
 
 
 def test_qr_returns_data_from_service(client, monkeypatch):
-    monkeypatch.setattr(whatsapp_module, "_call_service", lambda method, path: {"qr": "data:image/png;base64,xxx"})
+    monkeypatch.setattr(whatsapp_module, "_call_service", lambda method, path, json=None: {"qr": "data:image/png;base64,xxx"})
 
     token = register_and_login(client)
     headers = auth_headers(token)
@@ -48,51 +48,15 @@ def test_qr_returns_data_from_service(client, monkeypatch):
     assert response.json()["qr"] == "data:image/png;base64,xxx"
 
 
-def test_chats_lists_from_service(client, monkeypatch):
-    monkeypatch.setattr(
-        whatsapp_module,
-        "_call_service",
-        lambda method, path: {"chats": [{"jid": "123@g.us", "name": "Equipe Operações"}]},
+def _send_webhook_message(client, user_id, chat_jid, chat_name, sender, text, timestamp, from_me=False):
+    return client.post(
+        "/api/v1/whatsapp/webhook/message",
+        json={
+            "user_id": user_id, "chat_jid": chat_jid, "chat_name": chat_name,
+            "sender": sender, "text": text, "timestamp": timestamp, "from_me": from_me,
+        },
+        headers={"X-Webhook-Secret": "correct-secret"},
     )
-
-    token = register_and_login(client)
-    headers = auth_headers(token)
-
-    response = client.get("/api/v1/whatsapp/chats", headers=headers)
-    assert response.status_code == 200
-    assert response.json() == [{"jid": "123@g.us", "name": "Equipe Operações"}]
-
-
-def test_monitor_sets_chat_on_connection(client):
-    token = register_and_login(client)
-    headers = auth_headers(token)
-
-    response = client.post(
-        "/api/v1/whatsapp/monitor",
-        json={"chat_jid": "123@g.us", "chat_name": "Equipe Operações"},
-        headers=headers,
-    )
-    assert response.status_code == 200
-    body = response.json()
-    assert body["monitored_chat_jid"] == "123@g.us"
-    assert body["monitored_chat_name"] == "Equipe Operações"
-
-
-def test_disconnect_resets_connection(client, monkeypatch):
-    monkeypatch.setattr(whatsapp_module, "_call_service", lambda method, path: {})
-
-    token = register_and_login(client)
-    headers = auth_headers(token)
-    client.post(
-        "/api/v1/whatsapp/monitor", json={"chat_jid": "123@g.us", "chat_name": "Equipe"}, headers=headers
-    )
-
-    response = client.post("/api/v1/whatsapp/disconnect", headers=headers)
-    assert response.status_code == 200
-    body = response.json()
-    assert body["status"] == "disconnected"
-    assert body["monitored_chat_jid"] is None
-    assert body["monitored_chat_name"] is None
 
 
 def test_webhook_rejects_wrong_secret(client, monkeypatch):
@@ -109,64 +73,125 @@ def test_webhook_rejects_wrong_secret(client, monkeypatch):
     assert response.status_code == 401
 
 
-def test_webhook_buffers_message_only_for_monitored_chat(client, monkeypatch):
+def test_webhook_buffers_messages_across_chats(client, monkeypatch):
     monkeypatch.setattr(settings, "WHATSAPP_WEBHOOK_SECRET", "correct-secret")
-    monkeypatch.setattr(whatsapp_module, "_call_service", lambda method, path: {"status": "connected"})
+    monkeypatch.setattr(whatsapp_module, "_call_service", lambda method, path, json=None: {"status": "connected", "chats": []})
 
     token = register_and_login(client)
     headers = auth_headers(token)
     user_id = client.get("/api/v1/users/me", headers=headers).json()["id"]
 
-    client.post(
-        "/api/v1/whatsapp/monitor", json={"chat_jid": "123@g.us", "chat_name": "Equipe"}, headers=headers
-    )
+    # No connection yet in DB until /connect or /status runs.
+    client.get("/api/v1/whatsapp/status", headers=headers)
 
-    # Message from the monitored chat: buffered.
-    r1 = client.post(
-        "/api/v1/whatsapp/webhook/message",
-        json={
-            "user_id": user_id, "chat_jid": "123@g.us", "chat_name": "Equipe",
-            "sender": "João", "text": "checar estoque", "timestamp": 1700000000,
-        },
-        headers={"X-Webhook-Secret": "correct-secret"},
-    )
+    r1 = _send_webhook_message(client, user_id, "123@g.us", "Equipe", "João", "checar estoque", 1700000000)
     assert r1.status_code == 204
 
-    # Message from a different (unmonitored) chat: silently ignored.
-    r2 = client.post(
-        "/api/v1/whatsapp/webhook/message",
-        json={
-            "user_id": user_id, "chat_jid": "999@g.us", "chat_name": "Outro grupo",
-            "sender": "Maria", "text": "mensagem qualquer", "timestamp": 1700000001,
-        },
-        headers={"X-Webhook-Secret": "correct-secret"},
-    )
+    r2 = _send_webhook_message(client, user_id, "999@g.us", "Outro grupo", "Maria", "mensagem qualquer", 1700000001)
     assert r2.status_code == 204
 
     status_response = client.get("/api/v1/whatsapp/status", headers=headers)
-    assert status_response.json()["pending_message_count"] == 1
+    assert status_response.json()["pending_message_count"] == 2
+
+
+def test_chats_lists_summaries_ordered_by_last_message(client, monkeypatch):
+    monkeypatch.setattr(settings, "WHATSAPP_WEBHOOK_SECRET", "correct-secret")
+    monkeypatch.setattr(whatsapp_module, "_call_service", lambda method, path, json=None: {"status": "connected", "chats": []})
+
+    token = register_and_login(client)
+    headers = auth_headers(token)
+    user_id = client.get("/api/v1/users/me", headers=headers).json()["id"]
+    client.get("/api/v1/whatsapp/status", headers=headers)
+
+    _send_webhook_message(client, user_id, "123@g.us", "Equipe Operações", "João", "checar estoque", 1700000000)
+    _send_webhook_message(client, user_id, "999@g.us", "Outro grupo", "Maria", "mensagem mais recente", 1700000100)
+
+    response = client.get("/api/v1/whatsapp/chats", headers=headers)
+    assert response.status_code == 200
+    chats = response.json()
+    assert [c["jid"] for c in chats] == ["999@g.us", "123@g.us"]
+    assert chats[0]["last_message_text"] == "mensagem mais recente"
+    assert chats[0]["pending_count"] == 1
+
+
+def test_messages_lists_history_for_a_chat(client, monkeypatch):
+    monkeypatch.setattr(settings, "WHATSAPP_WEBHOOK_SECRET", "correct-secret")
+    monkeypatch.setattr(whatsapp_module, "_call_service", lambda method, path, json=None: {"status": "connected"})
+
+    token = register_and_login(client)
+    headers = auth_headers(token)
+    user_id = client.get("/api/v1/users/me", headers=headers).json()["id"]
+    client.get("/api/v1/whatsapp/status", headers=headers)
+
+    _send_webhook_message(client, user_id, "123@g.us", "Equipe", "João", "checar estoque", 1700000000)
+    _send_webhook_message(client, user_id, "999@g.us", "Outro", "Maria", "não deve aparecer", 1700000001)
+
+    response = client.get("/api/v1/whatsapp/messages", params={"chat_jid": "123@g.us"}, headers=headers)
+    assert response.status_code == 200
+    body = response.json()
+    assert len(body) == 1
+    assert body[0]["sender_name"] == "João"
+    assert body[0]["chat_jid"] == "123@g.us"
+    assert body[0]["is_processed"] is False
+
+
+def test_send_message_requires_connection(client):
+    token = register_and_login(client)
+    headers = auth_headers(token)
+
+    response = client.post(
+        "/api/v1/whatsapp/send", json={"chat_jid": "123@g.us", "text": "oi"}, headers=headers
+    )
+    assert response.status_code == 404
+
+
+def test_send_message_calls_service(client, monkeypatch):
+    monkeypatch.setattr(whatsapp_module, "_call_service", lambda method, path, json=None: {"status": "connected"})
+
+    token = register_and_login(client)
+    headers = auth_headers(token)
+    user_id = client.get("/api/v1/users/me", headers=headers).json()["id"]
+    client.get("/api/v1/whatsapp/status", headers=headers)
+
+    calls = []
+    monkeypatch.setattr(
+        whatsapp_module, "_call_service", lambda method, path, json=None: calls.append((method, path, json)) or {}
+    )
+
+    response = client.post(
+        "/api/v1/whatsapp/send", json={"chat_jid": "123@g.us", "text": "oi"}, headers=headers
+    )
+    assert response.status_code == 204
+    assert calls == [("POST", f"/send/{user_id}", {"jid": "123@g.us", "text": "oi"})]
+
+
+def test_disconnect_resets_connection(client, monkeypatch):
+    monkeypatch.setattr(whatsapp_module, "_call_service", lambda method, path, json=None: {})
+
+    token = register_and_login(client)
+    headers = auth_headers(token)
+    client.post("/api/v1/whatsapp/connect", headers=headers)
+
+    response = client.post("/api/v1/whatsapp/disconnect", headers=headers)
+    assert response.status_code == 200
+    assert response.json()["status"] == "disconnected"
 
 
 def test_analyze_uses_shared_extraction_and_marks_messages_processed(client, monkeypatch):
     monkeypatch.setattr(settings, "WHATSAPP_WEBHOOK_SECRET", "correct-secret")
+    monkeypatch.setattr(whatsapp_module, "_call_service", lambda method, path, json=None: {"status": "connected"})
 
     token = register_and_login(client)
     headers = auth_headers(token)
     workspace_id = get_default_workspace_id(client, headers)
     project = create_project(client, headers, workspace_id, name="Logística Norte")
     user_id = client.get("/api/v1/users/me", headers=headers).json()["id"]
+    client.get("/api/v1/whatsapp/status", headers=headers)
 
-    client.post(
-        "/api/v1/whatsapp/monitor", json={"chat_jid": "123@g.us", "chat_name": "Equipe"}, headers=headers
-    )
-    client.post(
-        "/api/v1/whatsapp/webhook/message",
-        json={
-            "user_id": user_id, "chat_jid": "123@g.us", "chat_name": "Equipe",
-            "sender": "João", "text": "auditoria no fornecedor X", "timestamp": 1700000000,
-        },
-        headers={"X-Webhook-Secret": "correct-secret"},
-    )
+    _send_webhook_message(client, user_id, "123@g.us", "Equipe", "João", "auditoria no fornecedor X", 1700000000)
+    message_id = client.get(
+        "/api/v1/whatsapp/messages", params={"chat_jid": "123@g.us"}, headers=headers
+    ).json()[0]["id"]
 
     captured_text = {}
 
@@ -181,7 +206,9 @@ def test_analyze_uses_shared_extraction_and_marks_messages_processed(client, mon
     monkeypatch.setattr(whatsapp_module, "suggest_tasks_for_workspace", fake_suggest)
 
     response = client.post(
-        "/api/v1/whatsapp/analyze", json={"workspace_id": workspace_id}, headers=headers
+        "/api/v1/whatsapp/analyze",
+        json={"workspace_id": workspace_id, "message_ids": [message_id]},
+        headers=headers,
     )
     assert response.status_code == 200
     body = response.json()
@@ -190,12 +217,15 @@ def test_analyze_uses_shared_extraction_and_marks_messages_processed(client, mon
     assert "João" in captured_text["text"]
     assert "auditoria no fornecedor X" in captured_text["text"]
 
-    # Second call: messages were marked processed, nothing left to analyze.
+    # Second call with the same (now processed) id has nothing left to analyze.
     response2 = client.post(
-        "/api/v1/whatsapp/analyze", json={"workspace_id": workspace_id}, headers=headers
+        "/api/v1/whatsapp/analyze",
+        json={"workspace_id": workspace_id, "message_ids": [message_id]},
+        headers=headers,
     )
     assert response2.status_code == 200
-    assert response2.json() == []
+    status_response = client.get("/api/v1/whatsapp/status", headers=headers)
+    assert status_response.json()["pending_message_count"] == 0
 
 
 def test_analyze_requires_workspace_membership(client):
@@ -205,43 +235,10 @@ def test_analyze_requires_workspace_membership(client):
     token_b = register_and_login(client, email="wa2@rbm.com")
     response = client.post(
         "/api/v1/whatsapp/analyze",
-        json={"workspace_id": workspace_a},
+        json={"workspace_id": workspace_a, "message_ids": [1]},
         headers=auth_headers(token_b),
     )
     assert response.status_code == 404
-
-
-def test_messages_lists_recent_messages_for_monitored_chat(client, monkeypatch):
-    monkeypatch.setattr(settings, "WHATSAPP_WEBHOOK_SECRET", "correct-secret")
-
-    token = register_and_login(client)
-    headers = auth_headers(token)
-    user_id = client.get("/api/v1/users/me", headers=headers).json()["id"]
-
-    # No monitored chat yet: empty list, no error.
-    response = client.get("/api/v1/whatsapp/messages", headers=headers)
-    assert response.status_code == 200
-    assert response.json() == []
-
-    client.post(
-        "/api/v1/whatsapp/monitor", json={"chat_jid": "123@g.us", "chat_name": "Equipe"}, headers=headers
-    )
-    client.post(
-        "/api/v1/whatsapp/webhook/message",
-        json={
-            "user_id": user_id, "chat_jid": "123@g.us", "chat_name": "Equipe",
-            "sender": "João", "text": "checar estoque", "timestamp": 1700000000,
-        },
-        headers={"X-Webhook-Secret": "correct-secret"},
-    )
-
-    response = client.get("/api/v1/whatsapp/messages", headers=headers)
-    assert response.status_code == 200
-    body = response.json()
-    assert len(body) == 1
-    assert body[0]["sender_name"] == "João"
-    assert body[0]["text"] == "checar estoque"
-    assert body[0]["is_processed"] is False
 
 
 def test_analyze_without_connection_returns_404(client):
@@ -250,6 +247,8 @@ def test_analyze_without_connection_returns_404(client):
     workspace_id = get_default_workspace_id(client, headers)
 
     response = client.post(
-        "/api/v1/whatsapp/analyze", json={"workspace_id": workspace_id}, headers=headers
+        "/api/v1/whatsapp/analyze",
+        json={"workspace_id": workspace_id, "message_ids": [1]},
+        headers=headers,
     )
     assert response.status_code == 404

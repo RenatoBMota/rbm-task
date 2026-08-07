@@ -470,20 +470,24 @@ export type WhatsAppStatusValue = "disconnected" | "connecting" | "qr_pending" |
 export interface WhatsAppStatus {
   status: WhatsAppStatusValue;
   phone_number: string | null;
-  monitored_chat_jid: string | null;
-  monitored_chat_name: string | null;
   pending_message_count: number;
 }
 
-export interface WhatsAppChat {
+export interface WhatsAppChatSummary {
   jid: string;
   name: string;
+  last_message_text: string | null;
+  last_message_at: string | null;
+  pending_count: number;
 }
 
 export interface WhatsAppMessage {
   id: number;
+  chat_jid: string;
+  chat_name: string;
   sender_name: string;
   text: string;
   whatsapp_timestamp: string;
+  is_from_me: boolean;
   is_processed: boolean;
 }

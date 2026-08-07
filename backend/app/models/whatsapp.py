@@ -21,8 +21,6 @@ class WhatsAppConnection(Base):
         Enum(WhatsAppConnectionStatus), default=WhatsAppConnectionStatus.DISCONNECTED
     )
     phone_number: Mapped[str | None] = mapped_column(String(32), nullable=True)
-    monitored_chat_jid: Mapped[str | None] = mapped_column(String(128), nullable=True)
-    monitored_chat_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     connected_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
@@ -46,9 +44,12 @@ class WhatsAppMessage(Base):
     connection_id: Mapped[int] = mapped_column(
         ForeignKey("whatsapp_connections.id", ondelete="CASCADE"), nullable=False
     )
+    chat_jid: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    chat_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     sender_name: Mapped[str] = mapped_column(String(255), nullable=False)
     text: Mapped[str] = mapped_column(Text, nullable=False)
     whatsapp_timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    is_from_me: Mapped[bool] = mapped_column(Boolean, default=False)
     is_processed: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)

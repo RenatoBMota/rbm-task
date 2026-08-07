@@ -20,6 +20,7 @@ import {
   LogOut,
   Target,
   Sparkles,
+  MessageCircle,
 } from "lucide-react";
 import { clsx } from "clsx";
 import { useAuthStore } from "@/store/auth";
@@ -36,6 +37,7 @@ const PRIMARY = [
 const MORE_ITEMS = [
   { href: "/dashboard/okr", label: "OKRs", icon: Target },
   { href: "/dashboard/ai-tasks", label: "Tarefas por IA", icon: Sparkles },
+  { href: "/dashboard/whatsapp", label: "WhatsApp", icon: MessageCircle },
   { href: "/dashboard/projects", label: "Projetos", icon: FolderOpen },
   { href: "/dashboard/gantt", label: "Gantt", icon: GanttChartSquare },
   { href: "/dashboard/resources", label: "Recursos", icon: Users2 },
