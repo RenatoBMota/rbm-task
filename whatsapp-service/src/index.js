@@ -61,7 +61,10 @@ async function startSession(userId) {
   sessions.set(key, session);
 
   const { state, saveCreds } = await useMultiFileAuthState(`${SESSIONS_DIR}/${key}`);
-  const sock = makeWASocket({ auth: state, logger, printQRInTerminal: false });
+  // Without syncFullHistory, Baileys never requests the existing chat list
+  // from WhatsApp on pairing - messaging-history.set simply never fires and
+  // the sidebar only ever picks up chats that receive a message afterwards.
+  const sock = makeWASocket({ auth: state, logger, printQRInTerminal: false, syncFullHistory: true });
   session.sock = sock;
 
   sock.ev.on("creds.update", saveCreds);
