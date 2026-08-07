@@ -76,6 +76,17 @@ def get_unprocessed_messages(db: Session, connection_id: int) -> list[WhatsAppMe
     )
 
 
+def get_recent_messages(db: Session, connection_id: int, limit: int = 50) -> list[WhatsAppMessage]:
+    messages = (
+        db.query(WhatsAppMessage)
+        .filter(WhatsAppMessage.connection_id == connection_id)
+        .order_by(WhatsAppMessage.whatsapp_timestamp.desc())
+        .limit(limit)
+        .all()
+    )
+    return list(reversed(messages))
+
+
 def count_unprocessed(db: Session, connection_id: int) -> int:
     return (
         db.query(WhatsAppMessage)

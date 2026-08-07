@@ -479,3 +479,11 @@ export interface WhatsAppChat {
   jid: string;
   name: string;
 }
+
+export interface WhatsAppMessage {
+  id: number;
+  sender_name: string;
+  text: string;
+  whatsapp_timestamp: string;
+  is_processed: boolean;
+}

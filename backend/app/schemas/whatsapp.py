@@ -28,6 +28,16 @@ class WhatsAppAnalyzeRequest(BaseModel):
     workspace_id: int
 
 
+class WhatsAppMessageOut(BaseModel):
+    id: int
+    sender_name: str
+    text: str
+    whatsapp_timestamp: datetime
+    is_processed: bool
+
+    model_config = {"from_attributes": True}
+
+
 class WhatsAppWebhookMessage(BaseModel):
     user_id: int
     chat_jid: str

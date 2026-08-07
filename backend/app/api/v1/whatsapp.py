@@ -12,7 +12,7 @@ from app.models.whatsapp import WhatsAppConnectionStatus
 from app.models.user import User
 from app.schemas.whatsapp import (
     WhatsAppStatusOut, WhatsAppQrOut, WhatsAppChatOut, WhatsAppMonitorRequest, WhatsAppWebhookMessage,
-    WhatsAppAnalyzeRequest,
+    WhatsAppAnalyzeRequest, WhatsAppMessageOut,
 )
 from app.schemas.ai_tasks import TaskSuggestionOut
 
@@ -65,6 +65,14 @@ def get_status(db: Session = Depends(get_db), current_user: User = Depends(get_c
 def list_chats(current_user: User = Depends(get_current_user)):
     data = _call_service("GET", f"/chats/{current_user.id}")
     return [WhatsAppChatOut(**chat) for chat in data.get("chats", [])]
+
+
+@router.get("/messages", response_model=list[WhatsAppMessageOut])
+def list_messages(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    connection = whatsapp_crud.get_connection(db, current_user.id)
+    if not connection or not connection.monitored_chat_jid:
+        return []
+    return whatsapp_crud.get_recent_messages(db, connection.id)
 
 
 @router.post("/monitor", response_model=WhatsAppStatusOut)

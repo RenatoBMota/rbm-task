@@ -211,6 +211,39 @@ def test_analyze_requires_workspace_membership(client):
     assert response.status_code == 404
 
 
+def test_messages_lists_recent_messages_for_monitored_chat(client, monkeypatch):
+    monkeypatch.setattr(settings, "WHATSAPP_WEBHOOK_SECRET", "correct-secret")
+
+    token = register_and_login(client)
+    headers = auth_headers(token)
+    user_id = client.get("/api/v1/users/me", headers=headers).json()["id"]
+
+    # No monitored chat yet: empty list, no error.
+    response = client.get("/api/v1/whatsapp/messages", headers=headers)
+    assert response.status_code == 200
+    assert response.json() == []
+
+    client.post(
+        "/api/v1/whatsapp/monitor", json={"chat_jid": "123@g.us", "chat_name": "Equipe"}, headers=headers
+    )
+    client.post(
+        "/api/v1/whatsapp/webhook/message",
+        json={
+            "user_id": user_id, "chat_jid": "123@g.us", "chat_name": "Equipe",
+            "sender": "João", "text": "checar estoque", "timestamp": 1700000000,
+        },
+        headers={"X-Webhook-Secret": "correct-secret"},
+    )
+
+    response = client.get("/api/v1/whatsapp/messages", headers=headers)
+    assert response.status_code == 200
+    body = response.json()
+    assert len(body) == 1
+    assert body[0]["sender_name"] == "João"
+    assert body[0]["text"] == "checar estoque"
+    assert body[0]["is_processed"] is False
+
+
 def test_analyze_without_connection_returns_404(client):
     token = register_and_login(client)
     headers = auth_headers(token)
