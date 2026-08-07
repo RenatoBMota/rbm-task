@@ -114,6 +114,33 @@ def test_chats_lists_summaries_ordered_by_last_message(client, monkeypatch):
     assert chats[0]["unread_count"] == 1
 
 
+def test_chats_mixes_chats_with_no_stored_messages_yet(client, monkeypatch):
+    # Chats synced from the live WhatsApp session that never received a
+    # message have no last_message_at, which used to crash the sort against
+    # timezone-aware timestamps from chats that do have messages.
+    monkeypatch.setattr(settings, "WHATSAPP_WEBHOOK_SECRET", "correct-secret")
+    monkeypatch.setattr(
+        whatsapp_module,
+        "_call_service",
+        lambda method, path, json=None: {
+            "status": "connected",
+            "chats": [{"jid": "555@s.whatsapp.net", "name": "Sem mensagens ainda"}],
+        },
+    )
+
+    token = register_and_login(client)
+    headers = auth_headers(token)
+    user_id = client.get("/api/v1/users/me", headers=headers).json()["id"]
+    client.get("/api/v1/whatsapp/status", headers=headers)
+
+    _send_webhook_message(client, user_id, "123@g.us", "Equipe Operações", "João", "checar estoque", 1700000000)
+
+    response = client.get("/api/v1/whatsapp/chats", headers=headers)
+    assert response.status_code == 200
+    jids = [c["jid"] for c in response.json()]
+    assert set(jids) == {"123@g.us", "555@s.whatsapp.net"}
+
+
 def test_messages_lists_history_for_a_chat(client, monkeypatch):
     monkeypatch.setattr(settings, "WHATSAPP_WEBHOOK_SECRET", "correct-secret")
     monkeypatch.setattr(whatsapp_module, "_call_service", lambda method, path, json=None: {"status": "connected"})

@@ -21,6 +21,17 @@ router = APIRouter(prefix="/whatsapp", tags=["whatsapp"])
 _TIMEOUT = 10.0
 
 
+def _sortable_datetime(value: datetime | None) -> datetime:
+    # SQLite (used in tests) returns naive datetimes even for timezone=True
+    # columns, while Postgres returns aware ones - normalize so sorting
+    # never compares naive against aware.
+    if value is None:
+        return datetime.min.replace(tzinfo=timezone.utc)
+    if value.tzinfo is None:
+        return value.replace(tzinfo=timezone.utc)
+    return value
+
+
 def _service_url(path: str) -> str:
     return f"{settings.WHATSAPP_SERVICE_URL}{path}"
 
@@ -80,7 +91,7 @@ def list_chats(db: Session = Depends(get_db), current_user: User = Depends(get_c
                 "unread_count": 0,
             }
 
-    ordered = sorted(summaries.values(), key=lambda s: s["last_message_at"] or datetime.min, reverse=True)
+    ordered = sorted(summaries.values(), key=lambda s: _sortable_datetime(s["last_message_at"]), reverse=True)
     return [WhatsAppChatSummary(**s) for s in ordered]
 
 
