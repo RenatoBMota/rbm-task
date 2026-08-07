@@ -101,6 +101,20 @@ async function startSession(userId) {
     }
   });
 
+  // The bulk list of a user's existing conversations arrives here (not via
+  // chats.upsert, which only fires for individual chat updates) right after
+  // the QR scan, as WhatsApp syncs recent chat history to this device.
+  sock.ev.on("messaging-history.set", ({ chats, contacts }) => {
+    const nameByJid = new Map((contacts || []).map((c) => [c.id, c.name || c.notify]));
+    for (const chat of chats || []) {
+      if (!chat.id) continue;
+      const name = chat.name || nameByJid.get(chat.id);
+      if (name || !session.chats.has(chat.id)) {
+        session.chats.set(chat.id, name || chatDisplayName(chat.id));
+      }
+    }
+  });
+
   sock.ev.on("messages.upsert", async ({ messages }) => {
     for (const msg of messages) {
       if (!msg.message || !msg.key.remoteJid) continue;
