@@ -59,6 +59,28 @@ async function forwardMessage(userId, chatJid, chatName, sender, text, timestamp
   }
 }
 
+async function forwardMessagesBulk(userId, entries) {
+  if (entries.length === 0) return;
+  try {
+    await axios.post(
+      `${BACKEND_URL}/api/v1/whatsapp/webhook/messages/bulk`,
+      entries.map((e) => ({ user_id: Number(userId), ...e })),
+      { headers: { "X-Webhook-Secret": WEBHOOK_SECRET }, timeout: 30000 }
+    );
+  } catch (err) {
+    logger.error({ err: err.message }, "failed to forward historical messages to backend");
+  }
+}
+
+function extractText(msg) {
+  return (
+    msg.message?.conversation ||
+    msg.message?.extendedTextMessage?.text ||
+    msg.message?.imageMessage?.caption ||
+    ""
+  );
+}
+
 async function startSession(userId) {
   const key = String(userId);
   const existing = sessions.get(key);
@@ -121,13 +143,37 @@ async function startSession(userId) {
   // the QR scan, as WhatsApp syncs recent chat history to this device. Names
   // are frequently missing from this first batch - they trickle in later via
   // contacts.upsert / groups.upsert, which are allowed to overwrite the
-  // raw-JID fallback set here.
-  sock.ev.on("messaging-history.set", ({ chats, contacts }) => {
-    console.log(`[wa:${key}] messaging-history.set: ${chats?.length ?? 0} chat(s), ${contacts?.length ?? 0} contact(s)`);
+  // raw-JID fallback set here. This same event also carries each chat's
+  // recent message history (only with syncFullHistory enabled), which is
+  // what lets opened conversations show past messages instead of starting
+  // empty from the moment of connecting.
+  sock.ev.on("messaging-history.set", ({ chats, contacts, messages }) => {
+    console.log(
+      `[wa:${key}] messaging-history.set: ${chats?.length ?? 0} chat(s), ${contacts?.length ?? 0} contact(s), ${messages?.length ?? 0} message(s)`
+    );
     const nameByJid = new Map((contacts || []).map((c) => [c.id, c.name || c.notify]));
     for (const chat of chats || []) {
       setChatName(session, chat.id, chat.name || nameByJid.get(chat.id));
     }
+
+    const entries = [];
+    for (const msg of (messages || []).slice(0, 5000)) {
+      if (!msg.message || !msg.key.remoteJid) continue;
+      const text = extractText(msg);
+      if (!text) continue;
+      const chatJid = msg.key.remoteJid;
+      const fromMe = !!msg.key.fromMe;
+      const sender = fromMe ? "Você" : msg.pushName || nameByJid.get(chatJid) || "Desconhecido";
+      entries.push({
+        chat_jid: chatJid,
+        chat_name: session.chats.get(chatJid) || chatDisplayName(chatJid),
+        sender,
+        text,
+        timestamp: msg.messageTimestamp,
+        from_me: fromMe,
+      });
+    }
+    forwardMessagesBulk(key, entries);
   });
 
   sock.ev.on("contacts.upsert", (contacts) => {
@@ -158,11 +204,7 @@ async function startSession(userId) {
         continue;
       }
       const chatJid = msg.key.remoteJid;
-      const text =
-        msg.message.conversation ||
-        msg.message.extendedTextMessage?.text ||
-        msg.message.imageMessage?.caption ||
-        "";
+      const text = extractText(msg);
       if (!text) continue;
 
       const fromMe = !!msg.key.fromMe;

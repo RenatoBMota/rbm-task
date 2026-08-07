@@ -141,6 +141,40 @@ def test_chats_mixes_chats_with_no_stored_messages_yet(client, monkeypatch):
     assert set(jids) == {"123@g.us", "555@s.whatsapp.net"}
 
 
+def test_bulk_webhook_backfills_history_marked_as_read(client, monkeypatch):
+    monkeypatch.setattr(settings, "WHATSAPP_WEBHOOK_SECRET", "correct-secret")
+    monkeypatch.setattr(whatsapp_module, "_call_service", lambda method, path, json=None: {"status": "connected", "chats": []})
+
+    token = register_and_login(client)
+    headers = auth_headers(token)
+    user_id = client.get("/api/v1/users/me", headers=headers).json()["id"]
+    client.get("/api/v1/whatsapp/status", headers=headers)
+
+    response = client.post(
+        "/api/v1/whatsapp/webhook/messages/bulk",
+        json=[
+            {
+                "user_id": user_id, "chat_jid": "123@g.us", "chat_name": "Equipe",
+                "sender": "João", "text": "mensagem antiga 1", "timestamp": 1699999000, "from_me": False,
+            },
+            {
+                "user_id": user_id, "chat_jid": "123@g.us", "chat_name": "Equipe",
+                "sender": "Você", "text": "mensagem antiga 2", "timestamp": 1699999100, "from_me": True,
+            },
+        ],
+        headers={"X-Webhook-Secret": "correct-secret"},
+    )
+    assert response.status_code == 204
+
+    messages = client.get("/api/v1/whatsapp/messages", params={"chat_jid": "123@g.us"}, headers=headers).json()
+    assert [m["text"] for m in messages] == ["mensagem antiga 1", "mensagem antiga 2"]
+    assert all(m["is_read"] for m in messages)
+
+    # Historical backfill doesn't inflate the unread badge.
+    chats = client.get("/api/v1/whatsapp/chats", headers=headers).json()
+    assert chats[0]["unread_count"] == 0
+
+
 def test_delete_chat_removes_stored_messages_and_notifies_service(client, monkeypatch):
     monkeypatch.setattr(settings, "WHATSAPP_WEBHOOK_SECRET", "correct-secret")
     calls = []

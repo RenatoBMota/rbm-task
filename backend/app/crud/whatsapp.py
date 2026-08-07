@@ -66,6 +66,27 @@ def add_message(
     return message
 
 
+def bulk_add_historical_messages(db: Session, connection_id: int, entries: list[dict]) -> None:
+    # Historical backfill (from the initial WhatsApp pairing sync) - marked
+    # already read since these predate the user opening the app, unlike a
+    # genuinely new incoming message.
+    objects = [
+        WhatsAppMessage(
+            connection_id=connection_id,
+            chat_jid=entry["chat_jid"],
+            chat_name=entry["chat_name"],
+            sender_name=entry["sender"],
+            text=entry["text"],
+            whatsapp_timestamp=entry["whatsapp_timestamp"],
+            is_from_me=entry["is_from_me"],
+            is_read=True,
+        )
+        for entry in entries
+    ]
+    db.add_all(objects)
+    db.commit()
+
+
 def get_recent_messages(db: Session, connection_id: int, chat_jid: str, limit: int = 50) -> list[WhatsAppMessage]:
     messages = (
         db.query(WhatsAppMessage)

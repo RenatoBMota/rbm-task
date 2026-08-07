@@ -163,6 +163,35 @@ def receive_message(
     )
 
 
+@router.post("/webhook/messages/bulk", status_code=status.HTTP_204_NO_CONTENT)
+def receive_messages_bulk(
+    body: list[WhatsAppWebhookMessage],
+    db: Session = Depends(get_db),
+    x_webhook_secret: str | None = Header(default=None),
+):
+    if not settings.WHATSAPP_WEBHOOK_SECRET or x_webhook_secret != settings.WHATSAPP_WEBHOOK_SECRET:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Segredo de webhook inválido.")
+    if not body:
+        return
+
+    connection = whatsapp_crud.get_connection(db, body[0].user_id)
+    if not connection:
+        return
+
+    entries = [
+        {
+            "chat_jid": msg.chat_jid,
+            "chat_name": msg.chat_name,
+            "sender": msg.sender,
+            "text": msg.text,
+            "whatsapp_timestamp": datetime.fromtimestamp(msg.timestamp, tz=timezone.utc),
+            "is_from_me": msg.from_me,
+        }
+        for msg in body
+    ]
+    whatsapp_crud.bulk_add_historical_messages(db, connection.id, entries)
+
+
 @router.post("/analyze", response_model=list[TaskSuggestionOut])
 def analyze_messages(
     body: WhatsAppAnalyzeRequest,
