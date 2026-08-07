@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from urllib.parse import quote
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Header, status
 from sqlalchemy.orm import Session
@@ -93,6 +94,17 @@ def list_chats(db: Session = Depends(get_db), current_user: User = Depends(get_c
 
     ordered = sorted(summaries.values(), key=lambda s: _sortable_datetime(s["last_message_at"]), reverse=True)
     return [WhatsAppChatSummary(**s) for s in ordered]
+
+
+@router.delete("/chats", status_code=status.HTTP_204_NO_CONTENT)
+def delete_chat(
+    chat_jid: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
+):
+    connection = whatsapp_crud.get_connection(db, current_user.id)
+    if not connection:
+        return
+    whatsapp_crud.delete_chat_messages(db, connection.id, chat_jid)
+    _call_service("DELETE", f"/chats/{current_user.id}/{quote(chat_jid, safe='')}")
 
 
 @router.get("/messages", response_model=list[WhatsAppMessageOut])

@@ -141,6 +141,30 @@ def test_chats_mixes_chats_with_no_stored_messages_yet(client, monkeypatch):
     assert set(jids) == {"123@g.us", "555@s.whatsapp.net"}
 
 
+def test_delete_chat_removes_stored_messages_and_notifies_service(client, monkeypatch):
+    monkeypatch.setattr(settings, "WHATSAPP_WEBHOOK_SECRET", "correct-secret")
+    calls = []
+    monkeypatch.setattr(
+        whatsapp_module,
+        "_call_service",
+        lambda method, path, json=None: calls.append((method, path)) or {"status": "connected", "chats": []},
+    )
+
+    token = register_and_login(client)
+    headers = auth_headers(token)
+    user_id = client.get("/api/v1/users/me", headers=headers).json()["id"]
+    client.get("/api/v1/whatsapp/status", headers=headers)
+
+    _send_webhook_message(client, user_id, "123@g.us", "Equipe", "João", "checar estoque", 1700000000)
+
+    response = client.delete("/api/v1/whatsapp/chats", params={"chat_jid": "123@g.us"}, headers=headers)
+    assert response.status_code == 204
+    assert ("DELETE", f"/chats/{user_id}/123%40g.us") in calls
+
+    chats = client.get("/api/v1/whatsapp/chats", headers=headers).json()
+    assert chats == []
+
+
 def test_messages_lists_history_for_a_chat(client, monkeypatch):
     monkeypatch.setattr(settings, "WHATSAPP_WEBHOOK_SECRET", "correct-secret")
     monkeypatch.setattr(whatsapp_module, "_call_service", lambda method, path, json=None: {"status": "connected"})

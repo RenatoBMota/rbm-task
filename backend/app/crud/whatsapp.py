@@ -129,6 +129,13 @@ def mark_chat_read(db: Session, connection_id: int, chat_jid: str) -> None:
     db.commit()
 
 
+def delete_chat_messages(db: Session, connection_id: int, chat_jid: str) -> None:
+    db.query(WhatsAppMessage).filter(
+        WhatsAppMessage.connection_id == connection_id, WhatsAppMessage.chat_jid == chat_jid
+    ).delete()
+    db.commit()
+
+
 def get_messages_by_ids(db: Session, connection_id: int, message_ids: list[int]) -> list[WhatsAppMessage]:
     return (
         db.query(WhatsAppMessage)

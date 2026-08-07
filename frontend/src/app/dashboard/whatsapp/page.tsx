@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { MessageCircle, Loader2, Unplug, Sparkles, Send, ArrowLeft, FolderOpen } from "lucide-react";
+import { MessageCircle, Loader2, Unplug, Sparkles, Send, ArrowLeft, FolderOpen, Trash2 } from "lucide-react";
 import { clsx } from "clsx";
 import api from "@/lib/api";
 import { useWorkspaces } from "@/hooks/useWorkspaces";
@@ -38,6 +38,7 @@ export default function WhatsAppPage() {
   const [error, setError] = useState("");
   const [selectedChat, setSelectedChat] = useState<WhatsAppChatSummary | null>(null);
   const [mobileShowThread, setMobileShowThread] = useState(false);
+  const [chatToDelete, setChatToDelete] = useState<WhatsAppChatSummary | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [draft, setDraft] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -100,6 +101,24 @@ export default function WhatsAppPage() {
       qc.removeQueries({ queryKey: ["whatsapp-messages"] });
     },
     onError: (err: unknown) => setError(extractErrorMessage(err, "Não foi possível desconectar o WhatsApp.")),
+  });
+
+  const deleteChatMutation = useMutation({
+    mutationFn: (jid: string) => api.delete("/whatsapp/chats", { params: { chat_jid: jid } }),
+    onSuccess: (_res, jid) => {
+      setError("");
+      setChatToDelete(null);
+      if (selectedChat?.jid === jid) {
+        setSelectedChat(null);
+        setMobileShowThread(false);
+      }
+      qc.setQueryData<WhatsAppChatSummary[]>(["whatsapp-chats"], (prev) => prev?.filter((c) => c.jid !== jid));
+      qc.removeQueries({ queryKey: ["whatsapp-messages", jid] });
+    },
+    onError: (err: unknown) => {
+      setChatToDelete(null);
+      setError(extractErrorMessage(err, "Não foi possível apagar essa conversa."));
+    },
   });
 
   const sendMutation = useMutation({
@@ -234,11 +253,14 @@ export default function WhatsAppPage() {
             </p>
           ) : (
             sortedChats.map((chat) => (
-              <button
+              <div
                 key={chat.jid}
+                role="button"
+                tabIndex={0}
                 onClick={() => openChat(chat)}
+                onKeyDown={(e) => e.key === "Enter" && openChat(chat)}
                 className={clsx(
-                  "w-full flex items-center gap-3 px-4 py-3 text-left border-b border-surface-100 dark:border-slate-800 hover:bg-surface-50 dark:hover:bg-slate-800/60 transition-colors",
+                  "group w-full flex items-center gap-3 px-4 py-3 text-left border-b border-surface-100 dark:border-slate-800 hover:bg-surface-50 dark:hover:bg-slate-800/60 transition-colors cursor-pointer",
                   selectedChat?.jid === chat.jid && "bg-surface-50 dark:bg-slate-800"
                 )}
               >
@@ -263,7 +285,17 @@ export default function WhatsAppPage() {
                     )}
                   </div>
                 </div>
-              </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setChatToDelete(chat);
+                  }}
+                  className="opacity-0 group-hover:opacity-100 text-slate-300 hover:text-red-500 p-1 shrink-0 transition-opacity"
+                  title="Apagar conversa"
+                >
+                  <Trash2 size={15} />
+                </button>
+              </div>
             ))
           )}
         </div>
@@ -383,6 +415,33 @@ export default function WhatsAppPage() {
         <p className="text-slate-400 text-sm mt-4 flex items-center gap-1.5">
           <FolderOpen size={14} /> Selecione uma área de trabalho para criar tarefas a partir das mensagens.
         </p>
+      )}
+
+      {chatToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="card p-5 max-w-sm w-full">
+            <p className="text-sm text-slate-700 dark:text-slate-300">
+              Apagar a conversa com <strong>{chatToDelete.name}</strong>? As mensagens serão removidas do TASK — o
+              WhatsApp no seu celular não é afetado. Ela volta a aparecer se chegar uma mensagem nova.
+            </p>
+            <div className="flex justify-end gap-2 mt-4">
+              <button
+                className="btn-secondary text-sm"
+                disabled={deleteChatMutation.isPending}
+                onClick={() => setChatToDelete(null)}
+              >
+                Cancelar
+              </button>
+              <button
+                className="bg-red-600 hover:bg-red-700 text-white text-sm font-medium px-3 py-1.5 rounded-lg disabled:opacity-60"
+                disabled={deleteChatMutation.isPending}
+                onClick={() => deleteChatMutation.mutate(chatToDelete.jid)}
+              >
+                {deleteChatMutation.isPending ? "Apagando..." : "Apagar"}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

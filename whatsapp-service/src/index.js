@@ -69,7 +69,7 @@ async function startSession(userId) {
     return existing;
   }
 
-  const session = { sock: null, status: "connecting", qr: null, phone: null, chats: new Map() };
+  const session = { sock: null, status: "connecting", qr: null, phone: null, chats: new Map(), sentMessageIds: new Set() };
   sessions.set(key, session);
 
   const { state, saveCreds } = await useMultiFileAuthState(`${SESSIONS_DIR}/${key}`);
@@ -151,6 +151,12 @@ async function startSession(userId) {
   sock.ev.on("messages.upsert", async ({ messages }) => {
     for (const msg of messages) {
       if (!msg.message || !msg.key.remoteJid) continue;
+      // Messages we sent through POST /send are stored synchronously there
+      // already - skip WhatsApp's own echo of them to avoid duplicates.
+      if (msg.key.id && session.sentMessageIds.has(msg.key.id)) {
+        session.sentMessageIds.delete(msg.key.id);
+        continue;
+      }
       const chatJid = msg.key.remoteJid;
       const text =
         msg.message.conversation ||
@@ -205,6 +211,12 @@ app.get("/chats/:userId", (req, res) => {
   res.json({ chats });
 });
 
+app.delete("/chats/:userId/:jid", (req, res) => {
+  const session = getSession(req.params.userId);
+  session?.chats.delete(decodeURIComponent(req.params.jid));
+  res.json({ ok: true });
+});
+
 app.post("/send/:userId", async (req, res) => {
   const session = getSession(req.params.userId);
   const { jid, text } = req.body || {};
@@ -215,7 +227,10 @@ app.post("/send/:userId", async (req, res) => {
     return res.status(400).json({ error: "jid and text are required" });
   }
   try {
-    await session.sock.sendMessage(jid, { text });
+    const sent = await session.sock.sendMessage(jid, { text });
+    if (sent?.key?.id) session.sentMessageIds.add(sent.key.id);
+    const chatName = session.chats.get(jid) || chatDisplayName(jid);
+    await forwardMessage(req.params.userId, jid, chatName, "Você", text, Math.floor(Date.now() / 1000), true);
     res.json({ ok: true });
   } catch (err) {
     logger.error({ err: err.message }, "send message failed");
