@@ -152,8 +152,23 @@ async function startSession(userId) {
       `[wa:${key}] messaging-history.set: ${chats?.length ?? 0} chat(s), ${contacts?.length ?? 0} contact(s), ${messages?.length ?? 0} message(s)`
     );
     const nameByJid = new Map((contacts || []).map((c) => [c.id, c.name || c.notify]));
+
+    // 1:1 chats rarely get a name via `contacts` - WhatsApp doesn't share the
+    // phone's contact book with a linked device, only push names, which show
+    // up reliably as the sender's pushName on their own historical messages.
+    const pushNameByJid = new Map();
+    for (const msg of messages || []) {
+      const jid = msg.key?.remoteJid;
+      if (jid && !msg.key.fromMe && !jid.endsWith("@g.us") && msg.pushName && !pushNameByJid.has(jid)) {
+        pushNameByJid.set(jid, msg.pushName);
+      }
+    }
+
     for (const chat of chats || []) {
-      setChatName(session, chat.id, chat.name || nameByJid.get(chat.id));
+      setChatName(session, chat.id, chat.name || nameByJid.get(chat.id) || pushNameByJid.get(chat.id));
+    }
+    for (const [jid, name] of pushNameByJid) {
+      setChatName(session, jid, name);
     }
 
     const entries = [];
@@ -163,7 +178,7 @@ async function startSession(userId) {
       if (!text) continue;
       const chatJid = msg.key.remoteJid;
       const fromMe = !!msg.key.fromMe;
-      const sender = fromMe ? "Você" : msg.pushName || nameByJid.get(chatJid) || "Desconhecido";
+      const sender = fromMe ? "Você" : msg.pushName || pushNameByJid.get(chatJid) || "Desconhecido";
       entries.push({
         chat_jid: chatJid,
         chat_name: session.chats.get(chatJid) || chatDisplayName(chatJid),
