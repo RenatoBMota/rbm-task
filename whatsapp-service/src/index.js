@@ -38,6 +38,26 @@ function setChatName(session, jid, name) {
   }
 }
 
+// WhatsApp is migrating 1:1 identities to an opaque "@lid" address in
+// parallel with the phone-number "@s.whatsapp.net" one, and can deliver the
+// same conversation under both - Baileys sees them as two unrelated chats.
+// Resolve @lid back to the phone-number jid via WhatsApp's own contact
+// lookup so messages land in the one real chat instead of a duplicate.
+async function resolveCanonicalJid(sock, session, jid) {
+  if (!jid || !jid.endsWith("@lid")) return jid;
+  if (session.lidToPhone.has(jid)) return session.lidToPhone.get(jid);
+  let resolved = jid;
+  try {
+    const results = await sock.onWhatsApp(jid);
+    const match = results?.find((r) => r.jid && !r.jid.endsWith("@lid"));
+    if (match?.jid) resolved = match.jid;
+  } catch (err) {
+    logger.warn({ err: err.message, jid }, "failed to resolve @lid to a phone-number jid");
+  }
+  session.lidToPhone.set(jid, resolved);
+  return resolved;
+}
+
 async function forwardMessage(userId, chatJid, chatName, sender, text, timestamp, fromMe) {
   if (!text) return;
   try {
@@ -91,7 +111,15 @@ async function startSession(userId) {
     return existing;
   }
 
-  const session = { sock: null, status: "connecting", qr: null, phone: null, chats: new Map(), sentMessageIds: new Set() };
+  const session = {
+    sock: null,
+    status: "connecting",
+    qr: null,
+    phone: null,
+    chats: new Map(),
+    sentMessageIds: new Set(),
+    lidToPhone: new Map(),
+  };
   sessions.set(key, session);
 
   const { state, saveCreds } = await useMultiFileAuthState(`${SESSIONS_DIR}/${key}`);
@@ -147,7 +175,7 @@ async function startSession(userId) {
   // recent message history (only with syncFullHistory enabled), which is
   // what lets opened conversations show past messages instead of starting
   // empty from the moment of connecting.
-  sock.ev.on("messaging-history.set", ({ chats, contacts, messages }) => {
+  sock.ev.on("messaging-history.set", async ({ chats, contacts, messages }) => {
     console.log(
       `[wa:${key}] messaging-history.set: ${chats?.length ?? 0} chat(s), ${contacts?.length ?? 0} contact(s), ${messages?.length ?? 0} message(s)`
     );
@@ -165,10 +193,12 @@ async function startSession(userId) {
     }
 
     for (const chat of chats || []) {
-      setChatName(session, chat.id, chat.name || nameByJid.get(chat.id) || pushNameByJid.get(chat.id));
+      const canonicalJid = await resolveCanonicalJid(sock, session, chat.id);
+      setChatName(session, canonicalJid, chat.name || nameByJid.get(chat.id) || pushNameByJid.get(chat.id));
     }
     for (const [jid, name] of pushNameByJid) {
-      setChatName(session, jid, name);
+      const canonicalJid = await resolveCanonicalJid(sock, session, jid);
+      setChatName(session, canonicalJid, name);
     }
 
     const entries = [];
@@ -176,9 +206,11 @@ async function startSession(userId) {
       if (!msg.message || !msg.key.remoteJid) continue;
       const text = extractText(msg);
       if (!text) continue;
-      const chatJid = msg.key.remoteJid;
+      // Merge WhatsApp's @lid-addressed copy of a 1:1 conversation into the
+      // same phone-number-based chat instead of a duplicate.
+      const chatJid = await resolveCanonicalJid(sock, session, msg.key.remoteJid);
       const fromMe = !!msg.key.fromMe;
-      const sender = fromMe ? "Você" : msg.pushName || pushNameByJid.get(chatJid) || "Desconhecido";
+      const sender = fromMe ? "Você" : msg.pushName || pushNameByJid.get(msg.key.remoteJid) || "Desconhecido";
       entries.push({
         chat_jid: chatJid,
         chat_name: session.chats.get(chatJid) || chatDisplayName(chatJid),
@@ -218,10 +250,12 @@ async function startSession(userId) {
         session.sentMessageIds.delete(msg.key.id);
         continue;
       }
-      const chatJid = msg.key.remoteJid;
       const text = extractText(msg);
       if (!text) continue;
 
+      // Merge WhatsApp's @lid-addressed copy of a 1:1 conversation into the
+      // same phone-number-based chat instead of a duplicate.
+      const chatJid = await resolveCanonicalJid(sock, session, msg.key.remoteJid);
       const fromMe = !!msg.key.fromMe;
       const sender = fromMe ? "Você" : msg.pushName || "Desconhecido";
       // A sender's pushName is a real name only for 1:1 chats - for groups
