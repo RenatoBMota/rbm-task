@@ -16,7 +16,12 @@ export function WhatsAppPanel({
   onSuggestions: (suggestions: TaskSuggestion[]) => void;
 }) {
   const qc = useQueryClient();
-  const [analyzeError, setAnalyzeError] = useState("");
+  const [error, setError] = useState("");
+
+  function extractErrorMessage(err: unknown, fallback: string): string {
+    const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+    return msg || fallback;
+  }
 
   const { data: status } = useQuery<WhatsAppStatus>({
     queryKey: ["whatsapp-status"],
@@ -43,135 +48,168 @@ export function WhatsAppPanel({
 
   const connectMutation = useMutation({
     mutationFn: () => api.post("/whatsapp/connect"),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["whatsapp-status"] }),
+    onSuccess: () => {
+      setError("");
+      qc.invalidateQueries({ queryKey: ["whatsapp-status"] });
+    },
+    onError: (err: unknown) => setError(extractErrorMessage(err, "Não foi possível conectar ao WhatsApp.")),
   });
 
   const monitorMutation = useMutation({
     mutationFn: (chat: WhatsAppChat) =>
       api.post("/whatsapp/monitor", { chat_jid: chat.jid, chat_name: chat.name }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["whatsapp-status"] }),
+    onSuccess: () => {
+      setError("");
+      qc.invalidateQueries({ queryKey: ["whatsapp-status"] });
+    },
+    onError: (err: unknown) => setError(extractErrorMessage(err, "Não foi possível selecionar essa conversa.")),
   });
 
   const disconnectMutation = useMutation({
     mutationFn: () => api.post("/whatsapp/disconnect"),
     onSuccess: () => {
+      setError("");
       qc.invalidateQueries({ queryKey: ["whatsapp-status"] });
       qc.removeQueries({ queryKey: ["whatsapp-chats"] });
     },
+    onError: (err: unknown) => setError(extractErrorMessage(err, "Não foi possível desconectar o WhatsApp.")),
   });
 
   const analyzeMutation = useMutation({
     mutationFn: () => api.post<TaskSuggestion[]>("/whatsapp/analyze", { workspace_id: workspaceId }),
     onSuccess: (res) => {
-      setAnalyzeError("");
+      setError("");
       onSuggestions(res.data);
       qc.invalidateQueries({ queryKey: ["whatsapp-status"] });
     },
-    onError: (error: unknown) => {
-      const msg = (error as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
-      setAnalyzeError(msg || "Não foi possível analisar as mensagens do WhatsApp.");
-    },
+    onError: (err: unknown) =>
+      setError(extractErrorMessage(err, "Não foi possível analisar as mensagens do WhatsApp.")),
   });
+
+  const errorBanner = error ? (
+    <div className="card p-3 mb-4 flex items-center justify-between text-sm text-red-600 bg-red-50">
+      <span>{error}</span>
+      <button onClick={() => setError("")} className="text-red-400 hover:text-red-600 text-xs font-medium">
+        Fechar
+      </button>
+    </div>
+  ) : null;
 
   if (!status || status.status === "disconnected") {
     return (
-      <div className="card p-4 mb-4 flex items-center justify-between">
-        <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
-          <MessageCircle size={18} className="text-green-600" />
-          Conecte o WhatsApp para sugerir tarefas a partir de uma conversa
+      <>
+        {errorBanner}
+        <div className="card p-4 mb-4 flex items-center justify-between">
+          <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
+            <MessageCircle size={18} className="text-green-600" />
+            Conecte o WhatsApp para sugerir tarefas a partir de uma conversa
+          </div>
+          <button
+            className="btn-secondary text-sm flex items-center gap-1.5"
+            disabled={connectMutation.isPending}
+            onClick={() => connectMutation.mutate()}
+          >
+            {connectMutation.isPending ? (
+              <Loader2 size={14} className="animate-spin" />
+            ) : (
+              <MessageCircle size={14} />
+            )}
+            Conectar WhatsApp
+          </button>
         </div>
-        <button
-          className="btn-secondary text-sm flex items-center gap-1.5"
-          disabled={connectMutation.isPending}
-          onClick={() => connectMutation.mutate()}
-        >
-          {connectMutation.isPending ? <Loader2 size={14} className="animate-spin" /> : <MessageCircle size={14} />}
-          Conectar WhatsApp
-        </button>
-      </div>
+      </>
     );
   }
 
   if (status.status === "connecting" || status.status === "qr_pending") {
     return (
-      <div className="card p-4 mb-4 flex flex-col items-center gap-3 text-center">
-        <p className="text-sm text-slate-600 dark:text-slate-300">
-          Abra o WhatsApp no celular → Aparelhos conectados → Conectar um aparelho, e escaneie o código abaixo
-        </p>
-        {qr?.qr ? (
-          <img src={qr.qr} alt="QR code do WhatsApp" className="w-48 h-48 rounded-lg border border-surface-200" />
-        ) : (
-          <div className="w-48 h-48 flex items-center justify-center text-slate-400">
-            <Loader2 size={24} className="animate-spin" />
-          </div>
-        )}
-      </div>
+      <>
+        {errorBanner}
+        <div className="card p-4 mb-4 flex flex-col items-center gap-3 text-center">
+          <p className="text-sm text-slate-600 dark:text-slate-300">
+            Abra o WhatsApp no celular → Aparelhos conectados → Conectar um aparelho, e escaneie o código abaixo
+          </p>
+          {qr?.qr ? (
+            <img src={qr.qr} alt="QR code do WhatsApp" className="w-48 h-48 rounded-lg border border-surface-200" />
+          ) : (
+            <div className="w-48 h-48 flex flex-col items-center justify-center gap-2 text-slate-400 text-xs text-center px-4">
+              <Loader2 size={24} className="animate-spin" />
+              Gerando código... isso pode levar alguns segundos
+            </div>
+          )}
+        </div>
+      </>
     );
   }
 
   if (status.status === "connected" && !status.monitored_chat_jid) {
     return (
-      <div className="card p-4 mb-4">
-        <p className="text-sm text-slate-600 dark:text-slate-300 mb-3">
-          WhatsApp conectado{status.phone_number ? ` (${status.phone_number})` : ""}. Escolha qual conversa a IA
-          deve acompanhar:
-        </p>
-        {chats.length === 0 ? (
-          <p className="text-slate-400 text-sm flex items-center gap-2">
-            <Loader2 size={14} className="animate-spin" /> Aguardando mensagens para listar as conversas...
+      <>
+        {errorBanner}
+        <div className="card p-4 mb-4">
+          <p className="text-sm text-slate-600 dark:text-slate-300 mb-3">
+            WhatsApp conectado{status.phone_number ? ` (${status.phone_number})` : ""}. Escolha qual conversa a IA
+            deve acompanhar:
           </p>
-        ) : (
-          <div className="flex flex-wrap gap-2">
-            {chats.map((chat) => (
-              <button
-                key={chat.jid}
-                className="btn-secondary text-sm"
-                disabled={monitorMutation.isPending}
-                onClick={() => monitorMutation.mutate(chat)}
-              >
-                {chat.name}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
+          {chats.length === 0 ? (
+            <p className="text-slate-400 text-sm flex items-center gap-2">
+              <Loader2 size={14} className="animate-spin" /> Aguardando mensagens para listar as conversas...
+            </p>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {chats.map((chat) => (
+                <button
+                  key={chat.jid}
+                  className="btn-secondary text-sm"
+                  disabled={monitorMutation.isPending}
+                  onClick={() => monitorMutation.mutate(chat)}
+                >
+                  {chat.name}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </>
     );
   }
 
   return (
-    <div className="card p-4 mb-4">
-      <div className="flex items-center justify-between flex-wrap gap-2">
-        <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
-          <MessageCircle size={16} className="text-green-600" />
-          <span>
-            <strong className="text-slate-900 dark:text-white">{status.monitored_chat_name}</strong>
-            {" · "}
-            {status.pending_message_count} mensagem(ns) nova(s)
-          </span>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            className="btn-primary text-sm flex items-center gap-1.5"
-            disabled={status.pending_message_count === 0 || !workspaceId || analyzeMutation.isPending}
-            onClick={() => analyzeMutation.mutate()}
-          >
-            {analyzeMutation.isPending ? (
-              <Loader2 size={14} className="animate-spin" />
-            ) : (
-              <Sparkles size={14} />
-            )}
-            Analisar mensagens do WhatsApp
-          </button>
-          <button
-            className="text-slate-300 hover:text-red-500 p-1.5"
-            title="Desconectar WhatsApp"
-            onClick={() => disconnectMutation.mutate()}
-          >
-            <Unplug size={16} />
-          </button>
+    <>
+      {errorBanner}
+      <div className="card p-4 mb-4">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
+            <MessageCircle size={16} className="text-green-600" />
+            <span>
+              <strong className="text-slate-900 dark:text-white">{status.monitored_chat_name}</strong>
+              {" · "}
+              {status.pending_message_count} mensagem(ns) nova(s)
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              className="btn-primary text-sm flex items-center gap-1.5"
+              disabled={status.pending_message_count === 0 || !workspaceId || analyzeMutation.isPending}
+              onClick={() => analyzeMutation.mutate()}
+            >
+              {analyzeMutation.isPending ? (
+                <Loader2 size={14} className="animate-spin" />
+              ) : (
+                <Sparkles size={14} />
+              )}
+              Analisar mensagens do WhatsApp
+            </button>
+            <button
+              className="text-slate-300 hover:text-red-500 p-1.5"
+              title="Desconectar WhatsApp"
+              onClick={() => disconnectMutation.mutate()}
+            >
+              <Unplug size={16} />
+            </button>
+          </div>
         </div>
       </div>
-      {analyzeError && <p className="text-sm text-red-600 mt-2">{analyzeError}</p>}
-    </div>
+    </>
   );
 }
