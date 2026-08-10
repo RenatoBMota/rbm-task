@@ -21,7 +21,10 @@ class TaskBase(BaseModel):
 
 
 class TaskCreate(TaskBase):
-    pass
+    # Required when project_id is absent - a standalone ("Agenda diária")
+    # task still belongs to exactly one workspace. Ignored (derived from the
+    # project instead) when project_id is set.
+    workspace_id: int | None = None
 
 
 class TaskUpdate(BaseModel):
@@ -49,6 +52,7 @@ class TaskMove(BaseModel):
 
 class TaskOut(TaskBase):
     id: int
+    workspace_id: int
     is_completed: bool
     completed_at: datetime | None
     position: int

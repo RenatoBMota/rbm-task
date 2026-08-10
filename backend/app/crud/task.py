@@ -1,8 +1,7 @@
 import calendar
 from datetime import datetime, timedelta, timezone
-from sqlalchemy import or_
 from sqlalchemy.orm import Session
-from app.models.task import Task, TaskStatus, TaskRecurrence
+from app.models.task import Task, TaskStatus, TaskRecurrence, TaskPriority
 from app.models.project import Project
 from app.models.notification import NotificationType
 from app.models.automation import TriggerEvent
@@ -61,6 +60,7 @@ def _create_next_occurrence(db: Session, task: Task) -> Task:
         due_date=next_due,
         estimated_minutes=task.estimated_minutes,
         project_id=task.project_id,
+        workspace_id=task.workspace_id,
         assignee_id=task.assignee_id,
         parent_id=task.parent_id,
         recurrence=task.recurrence,
@@ -77,11 +77,8 @@ def get_task(db: Session, task_id: int) -> Task | None:
     return db.query(Task).filter(Task.id == task_id).first()
 
 
-def _scope_to_workspace(db: Session, query, workspace_id: int | None):
-    if workspace_id is None:
-        return query
-    project_ids = [p.id for p in db.query(Project.id).filter(Project.workspace_id == workspace_id).all()]
-    return query.filter(or_(Task.project_id == None, Task.project_id.in_(project_ids)))
+# Tasks with a due date come first, sorted ascending; tasks without one sort last.
+_BY_DUE_DATE = (Task.due_date.is_(None), Task.due_date.asc())
 
 
 def get_tasks(
@@ -89,6 +86,9 @@ def get_tasks(
     assignee_id: int | None = None,
     project_id: int | None = None,
     workspace_id: int | None = None,
+    priority: TaskPriority | None = None,
+    due_after: datetime | None = None,
+    due_before: datetime | None = None,
     skip: int = 0,
     limit: int = 100,
     include_archived: bool = False,
@@ -100,8 +100,15 @@ def get_tasks(
         query = query.filter(Task.assignee_id == assignee_id)
     if project_id:
         query = query.filter(Task.project_id == project_id)
-    query = _scope_to_workspace(db, query, workspace_id)
-    return query.offset(skip).limit(limit).all()
+    if workspace_id:
+        query = query.filter(Task.workspace_id == workspace_id)
+    if priority:
+        query = query.filter(Task.priority == priority)
+    if due_after:
+        query = query.filter(Task.due_date >= due_after)
+    if due_before:
+        query = query.filter(Task.due_date <= due_before)
+    return query.order_by(*_BY_DUE_DATE).offset(skip).limit(limit).all()
 
 
 def get_today_tasks(db: Session, user_id: int, workspace_id: int | None = None) -> list[Task]:
@@ -114,7 +121,9 @@ def get_today_tasks(db: Session, user_id: int, workspace_id: int | None = None) 
         Task.due_date <= today_end,
         Task.is_completed == False,
     )
-    return _scope_to_workspace(db, query, workspace_id).all()
+    if workspace_id:
+        query = query.filter(Task.workspace_id == workspace_id)
+    return query.order_by(*_BY_DUE_DATE).all()
 
 
 def get_subtasks(db: Session, parent_id: int) -> list[Task]:
@@ -130,10 +139,15 @@ def get_board_tasks(db: Session, project_id: int) -> list[Task]:
     )
 
 
-def get_standalone_board_tasks(db: Session, user_id: int) -> list[Task]:
+def get_standalone_board_tasks(db: Session, user_id: int, workspace_id: int) -> list[Task]:
     return (
         db.query(Task)
-        .filter(Task.project_id == None, Task.assignee_id == user_id, Task.parent_id == None)
+        .filter(
+            Task.project_id == None,
+            Task.assignee_id == user_id,
+            Task.workspace_id == workspace_id,
+            Task.parent_id == None,
+        )
         .order_by(Task.status, Task.position)
         .all()
     )
@@ -155,12 +169,18 @@ def get_overdue_tasks(db: Session, user_id: int, workspace_id: int | None = None
         Task.due_date < now,
         Task.is_completed == False,
     )
-    return _scope_to_workspace(db, query, workspace_id).all()
+    if workspace_id:
+        query = query.filter(Task.workspace_id == workspace_id)
+    return query.order_by(*_BY_DUE_DATE).all()
 
 
 def create_task(db: Session, task_in: TaskCreate, creator_id: int) -> Task:
     _validate_task_dates_in_project(db, task_in.project_id, task_in.start_date, task_in.due_date)
-    db_task = Task(**task_in.model_dump())
+    data = task_in.model_dump()
+    if task_in.project_id:
+        project = db.query(Project).filter(Project.id == task_in.project_id).first()
+        data["workspace_id"] = project.workspace_id
+    db_task = Task(**data)
     if not db_task.assignee_id:
         db_task.assignee_id = creator_id
     max_position = db.query(Task).filter(Task.status == db_task.status).count()
@@ -242,6 +262,14 @@ def update_task(db: Session, task: Task, task_in: TaskUpdate, changed_by_id: int
             update_data.get("due_date", task.due_date),
         )
 
+    # Moving a task into a project re-homes it into that project's workspace.
+    # Clearing project_id (back to standalone) keeps the task's current
+    # workspace rather than leaving it ambiguous.
+    if update_data.get("project_id"):
+        project = db.query(Project).filter(Project.id == update_data["project_id"]).first()
+        if project:
+            update_data["workspace_id"] = project.workspace_id
+
     for field, value in update_data.items():
         setattr(task, field, value)
     db.commit()
@@ -289,6 +317,7 @@ def duplicate_task(db: Session, task: Task, title: str | None, creator_id: int) 
         due_date=task.due_date,
         estimated_minutes=task.estimated_minutes,
         project_id=task.project_id,
+        workspace_id=task.workspace_id,
         assignee_id=task.assignee_id or creator_id,
         parent_id=task.parent_id,
         recurrence=task.recurrence,

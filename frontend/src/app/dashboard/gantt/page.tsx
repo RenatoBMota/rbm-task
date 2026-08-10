@@ -275,6 +275,7 @@ export default function GanttPage() {
         <QuickAddTaskModal
           projects={projects}
           defaultProjectId={projectId}
+          workspaceId={currentWorkspaceId}
           onClose={() => {
             setShowQuickAdd(false);
             invalidateGantt();

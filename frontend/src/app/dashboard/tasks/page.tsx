@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, CheckCircle2, Circle, Trash2 } from "lucide-react";
+import { Plus, CheckCircle2, Circle, Trash2, X } from "lucide-react";
 import api from "@/lib/api";
 import { clsx } from "clsx";
 import { useWorkspaces } from "@/hooks/useWorkspaces";
@@ -22,6 +22,7 @@ interface Task {
 }
 
 const EMPTY_PROJECTS: Project[] = [];
+const PRIORITIES = ["P1", "P2", "P3", "P4"] as const;
 
 const priorityColors: Record<string, string> = {
   P1: "bg-red-100 text-red-700 border-red-200",
@@ -34,7 +35,12 @@ export default function TasksPage() {
   const qc = useQueryClient();
   const [showModal, setShowModal] = useState(false);
   const [selectedTaskId, setSelectedTaskId] = useState<number | null>(null);
+  const [priorityFilter, setPriorityFilter] = useState("");
+  const [dueFrom, setDueFrom] = useState("");
+  const [dueTo, setDueTo] = useState("");
   const { currentWorkspaceId } = useWorkspaces();
+
+  const hasFilters = !!priorityFilter || !!dueFrom || !!dueTo;
 
   const { data: projects = EMPTY_PROJECTS } = useQuery<Project[]>({
     queryKey: ["projects", currentWorkspaceId],
@@ -43,8 +49,18 @@ export default function TasksPage() {
   });
 
   const { data: tasks = [], isLoading } = useQuery<Task[]>({
-    queryKey: ["tasks", currentWorkspaceId],
-    queryFn: () => api.get("/tasks", { params: { workspace_id: currentWorkspaceId } }).then((r) => r.data),
+    queryKey: ["tasks", currentWorkspaceId, priorityFilter, dueFrom, dueTo],
+    queryFn: () =>
+      api
+        .get("/tasks", {
+          params: {
+            workspace_id: currentWorkspaceId,
+            priority: priorityFilter || undefined,
+            due_after: dueFrom ? new Date(`${dueFrom}T00:00:00`).toISOString() : undefined,
+            due_before: dueTo ? new Date(`${dueTo}T23:59:59`).toISOString() : undefined,
+          },
+        })
+        .then((r) => r.data),
     enabled: !!currentWorkspaceId,
   });
 
@@ -71,9 +87,52 @@ export default function TasksPage() {
         </button>
       </div>
 
+      <div className="flex flex-wrap items-center gap-2 mb-5">
+        <select
+          className="input py-1.5 text-sm w-36"
+          value={priorityFilter}
+          onChange={(e) => setPriorityFilter(e.target.value)}
+        >
+          <option value="">Toda prioridade</option>
+          {PRIORITIES.map((p) => (
+            <option key={p} value={p}>
+              {p}
+            </option>
+          ))}
+        </select>
+        <input
+          type="date"
+          className="input py-1.5 text-sm"
+          value={dueFrom}
+          onChange={(e) => setDueFrom(e.target.value)}
+          title="Data de início"
+        />
+        <span className="text-slate-400 text-sm">até</span>
+        <input
+          type="date"
+          className="input py-1.5 text-sm"
+          value={dueTo}
+          onChange={(e) => setDueTo(e.target.value)}
+          title="Data final"
+        />
+        {hasFilters && (
+          <button
+            className="text-slate-400 hover:text-red-500 text-xs font-medium flex items-center gap-1"
+            onClick={() => {
+              setPriorityFilter("");
+              setDueFrom("");
+              setDueTo("");
+            }}
+          >
+            <X size={13} /> Limpar filtros
+          </button>
+        )}
+      </div>
+
       {showModal && (
         <QuickAddTaskModal
           projects={projects}
+          workspaceId={currentWorkspaceId}
           onClose={() => {
             setShowModal(false);
             qc.invalidateQueries({ queryKey: ["tasks"] });
@@ -83,6 +142,8 @@ export default function TasksPage() {
 
       {isLoading ? (
         <p className="text-slate-400">Carregando...</p>
+      ) : tasks.length === 0 && hasFilters ? (
+        <p className="text-slate-400 text-sm">Nenhuma tarefa encontrada para esses filtros.</p>
       ) : (
         <div className="space-y-6">
           <TaskGroup

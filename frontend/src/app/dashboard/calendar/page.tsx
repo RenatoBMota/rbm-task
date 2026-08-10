@@ -15,7 +15,7 @@ import {
   subMonths,
 } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import { clsx } from "clsx";
 import api from "@/lib/api";
 import { PRIORITY_COLORS } from "@/lib/types";
@@ -28,6 +28,7 @@ const WEEKDAYS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 export default function CalendarPage() {
   const [cursor, setCursor] = useState(new Date());
   const [selectedTaskId, setSelectedTaskId] = useState<number | null>(null);
+  const [selectedDay, setSelectedDay] = useState<Date | null>(null);
   const { currentWorkspaceId } = useWorkspaces();
 
   const { data: tasks = [] } = useQuery<Task[]>({
@@ -76,9 +77,11 @@ export default function CalendarPage() {
             return (
               <div
                 key={day.toISOString()}
+                onClick={() => dayTasks.length > 0 && setSelectedDay(day)}
                 className={clsx(
                   "min-h-[110px] border-b border-r border-surface-100 dark:border-slate-800 p-2",
-                  !isSameMonth(day, cursor) && "bg-surface-50 dark:bg-surface-800"
+                  !isSameMonth(day, cursor) && "bg-surface-50 dark:bg-surface-800",
+                  dayTasks.length > 0 && "cursor-pointer hover:bg-surface-50 dark:hover:bg-slate-800/60"
                 )}
               >
                 <span
@@ -94,7 +97,10 @@ export default function CalendarPage() {
                   {dayTasks.slice(0, 3).map((task) => (
                     <button
                       key={task.id}
-                      onClick={() => setSelectedTaskId(task.id)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedTaskId(task.id);
+                      }}
                       className={clsx(
                         "block w-full text-left text-xs px-1.5 py-0.5 rounded border truncate",
                         PRIORITY_COLORS[task.priority]
@@ -112,6 +118,48 @@ export default function CalendarPage() {
           })}
         </div>
       </div>
+
+      {selectedDay && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center px-4" onClick={() => setSelectedDay(null)}>
+          <div
+            className="bg-white dark:bg-surface-900 w-full max-w-md rounded-xl shadow-xl border border-surface-200 dark:border-slate-700 max-h-[80vh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-4 py-3 border-b border-surface-100 dark:border-slate-800">
+              <span className="font-semibold text-slate-900 dark:text-white capitalize">
+                {format(selectedDay, "EEEE, d 'de' MMMM", { locale: ptBR })}
+              </span>
+              <button onClick={() => setSelectedDay(null)} className="text-slate-400 hover:text-slate-600 p-1">
+                <X size={18} />
+              </button>
+            </div>
+            <div className="overflow-y-auto p-3 space-y-2">
+              {tasksForDay(selectedDay).map((task) => (
+                <button
+                  key={task.id}
+                  onClick={() => {
+                    setSelectedTaskId(task.id);
+                    setSelectedDay(null);
+                  }}
+                  className="w-full flex items-center gap-2 text-left text-sm px-3 py-2 rounded-lg border border-surface-100 dark:border-slate-800 hover:bg-surface-50 dark:hover:bg-slate-800/60"
+                >
+                  <span
+                    className={clsx(
+                      "text-xs font-medium px-2 py-0.5 rounded-full border shrink-0",
+                      PRIORITY_COLORS[task.priority]
+                    )}
+                  >
+                    {task.priority}
+                  </span>
+                  <span className={clsx("flex-1 truncate", task.is_completed && "line-through text-slate-400")}>
+                    {task.title}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {selectedTaskId && (
         <TaskDetailModal taskId={selectedTaskId} onClose={() => setSelectedTaskId(null)} />

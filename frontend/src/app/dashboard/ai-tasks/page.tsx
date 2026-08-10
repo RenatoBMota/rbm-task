@@ -70,6 +70,7 @@ export default function AiTasksPage() {
           due_date: item.due_date ? new Date(`${item.due_date}T23:59:00`).toISOString() : null,
           estimated_minutes: item.estimated_minutes === "" ? null : item.estimated_minutes,
           project_id: item.project_id === "" ? null : item.project_id,
+          workspace_id: currentWorkspaceId,
         });
       }
       return selected.length;

@@ -1,8 +1,10 @@
+from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.api.deps import get_current_user
+from app.models.task import TaskPriority
 from app.crud.task import (
     get_task, get_tasks, get_today_tasks, get_overdue_tasks, get_board_tasks, get_standalone_board_tasks,
     get_subtasks, create_task, update_task, delete_task, move_task, duplicate_task
@@ -32,6 +34,9 @@ router = APIRouter(prefix="/tasks", tags=["tasks"])
 def list_tasks(
     project_id: int | None = None,
     workspace_id: int | None = None,
+    priority: TaskPriority | None = None,
+    due_after: datetime | None = None,
+    due_before: datetime | None = None,
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
@@ -39,42 +44,51 @@ def list_tasks(
 ):
     if project_id:
         require_project_member(db, project_id, current_user.id)
-        return get_tasks(db, project_id=project_id, skip=skip, limit=limit)
-    if workspace_id:
-        require_workspace_member(db, workspace_id, current_user.id)
-    return get_tasks(db, assignee_id=current_user.id, workspace_id=workspace_id, skip=skip, limit=limit)
+        return get_tasks(
+            db, project_id=project_id, priority=priority, due_after=due_after, due_before=due_before,
+            skip=skip, limit=limit,
+        )
+    if not workspace_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="workspace_id é obrigatório.")
+    require_workspace_member(db, workspace_id, current_user.id)
+    return get_tasks(
+        db, assignee_id=current_user.id, workspace_id=workspace_id, priority=priority,
+        due_after=due_after, due_before=due_before, skip=skip, limit=limit,
+    )
 
 
 @router.get("/today", response_model=list[TaskOut])
 def list_today_tasks(
-    workspace_id: int | None = None,
+    workspace_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    if workspace_id:
-        require_workspace_member(db, workspace_id, current_user.id)
+    require_workspace_member(db, workspace_id, current_user.id)
     return get_today_tasks(db, current_user.id, workspace_id=workspace_id)
 
 
 @router.get("/overdue", response_model=list[TaskOut])
 def list_overdue_tasks(
-    workspace_id: int | None = None,
+    workspace_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    if workspace_id:
-        require_workspace_member(db, workspace_id, current_user.id)
+    require_workspace_member(db, workspace_id, current_user.id)
     return get_overdue_tasks(db, current_user.id, workspace_id=workspace_id)
 
 
 @router.get("/board", response_model=list[TaskOut])
 def list_board_tasks(
     project_id: int | None = None,
+    workspace_id: int | None = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     if project_id is None:
-        return get_standalone_board_tasks(db, current_user.id)
+        if not workspace_id:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="workspace_id é obrigatório.")
+        require_workspace_member(db, workspace_id, current_user.id)
+        return get_standalone_board_tasks(db, current_user.id, workspace_id)
     require_project_member(db, project_id, current_user.id)
     return get_board_tasks(db, project_id)
 
@@ -87,6 +101,13 @@ def create(
 ):
     if task_in.project_id:
         require_project_member(db, task_in.project_id, current_user.id)
+    elif task_in.workspace_id:
+        require_workspace_member(db, task_in.workspace_id, current_user.id)
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Informe um projeto ou uma área de trabalho para a tarefa.",
+        )
     try:
         return create_task(db, task_in, creator_id=current_user.id)
     except TaskDateRangeError as exc:

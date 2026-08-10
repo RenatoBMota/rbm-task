@@ -23,11 +23,13 @@ export function QuickAddTaskModal({
   projects,
   defaultProjectId,
   defaultStatus,
+  workspaceId,
 }: {
   onClose: () => void;
   projects: Project[];
   defaultProjectId?: number | null;
   defaultStatus?: TaskStatus;
+  workspaceId?: number | null;
 }) {
   const qc = useQueryClient();
   const titleRef = useRef<HTMLTextAreaElement>(null);
@@ -64,6 +66,7 @@ export function QuickAddTaskModal({
         recurrence,
         location: location.trim() || null,
         project_id: projectId,
+        workspace_id: workspaceId ?? undefined,
       });
       if (reminderAt) {
         await api.post(`/tasks/${task.id}/reminders`, {

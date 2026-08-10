@@ -23,6 +23,7 @@ export interface Task {
   completed_at: string | null;
   position: number;
   project_id: number | null;
+  workspace_id: number;
   assignee_id: number | null;
   parent_id: number | null;
   recurrence: TaskRecurrence;

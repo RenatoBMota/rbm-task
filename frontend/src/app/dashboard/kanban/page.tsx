@@ -14,7 +14,7 @@ import {
   type DragEndEvent,
   type DragStartEvent,
 } from "@dnd-kit/core";
-import { Plus } from "lucide-react";
+import { Plus, X } from "lucide-react";
 import api from "@/lib/api";
 import { TASK_STATUSES } from "@/lib/types";
 import type { Task, TaskStatus, Project } from "@/lib/types";
@@ -52,6 +52,9 @@ export default function KanbanPage() {
   const [selectedTaskId, setSelectedTaskId] = useState<number | null>(null);
   const [quickAddStatus, setQuickAddStatus] = useState<TaskStatus | null>(null);
   const [moveError, setMoveError] = useState("");
+  const [priorityFilter, setPriorityFilter] = useState("");
+  const [dueFrom, setDueFrom] = useState("");
+  const [dueTo, setDueTo] = useState("");
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
@@ -73,12 +76,14 @@ export default function KanbanPage() {
   }, [projects, projectId, projectsLoaded]);
 
   const { data: tasks = EMPTY_TASKS } = useQuery<Task[]>({
-    queryKey: ["tasks", "board", projectId],
+    queryKey: ["tasks", "board", projectId, currentWorkspaceId],
     queryFn: () =>
       api
-        .get("/tasks/board", { params: projectId === AGENDA ? {} : { project_id: projectId } })
+        .get("/tasks/board", {
+          params: projectId === AGENDA ? { workspace_id: currentWorkspaceId } : { project_id: projectId },
+        })
         .then((r) => r.data),
-    enabled: projectId !== null,
+    enabled: projectId !== null && (projectId !== AGENDA || !!currentWorkspaceId),
   });
 
   useEffect(() => {
@@ -153,6 +158,14 @@ export default function KanbanPage() {
     moveMutation.mutate({ id: activeId, status: targetStatus, position: insertIndex });
   };
 
+  const hasFilters = !!priorityFilter || !!dueFrom || !!dueTo;
+  const passesFilter = (task: Task) => {
+    if (priorityFilter && task.priority !== priorityFilter) return false;
+    if (dueFrom && (!task.due_date || task.due_date < `${dueFrom}T00:00:00`)) return false;
+    if (dueTo && (!task.due_date || task.due_date > `${dueTo}T23:59:59`)) return false;
+    return true;
+  };
+
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
@@ -182,6 +195,47 @@ export default function KanbanPage() {
         </div>
       </div>
 
+      <div className="flex flex-wrap items-center gap-2 mb-5">
+        <select
+          className="input py-1.5 text-sm w-36"
+          value={priorityFilter}
+          onChange={(e) => setPriorityFilter(e.target.value)}
+        >
+          <option value="">Toda prioridade</option>
+          <option value="P1">P1</option>
+          <option value="P2">P2</option>
+          <option value="P3">P3</option>
+          <option value="P4">P4</option>
+        </select>
+        <input
+          type="date"
+          className="input py-1.5 text-sm"
+          value={dueFrom}
+          onChange={(e) => setDueFrom(e.target.value)}
+          title="Data de início"
+        />
+        <span className="text-slate-400 text-sm">até</span>
+        <input
+          type="date"
+          className="input py-1.5 text-sm"
+          value={dueTo}
+          onChange={(e) => setDueTo(e.target.value)}
+          title="Data final"
+        />
+        {hasFilters && (
+          <button
+            className="text-slate-400 hover:text-red-500 text-xs font-medium flex items-center gap-1"
+            onClick={() => {
+              setPriorityFilter("");
+              setDueFrom("");
+              setDueTo("");
+            }}
+          >
+            <X size={13} /> Limpar filtros
+          </button>
+        )}
+      </div>
+
       {moveError && (
         <div className="mb-4 flex items-center justify-between text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">
           <span>{moveError}</span>
@@ -206,7 +260,7 @@ export default function KanbanPage() {
                 key={value}
                 status={value}
                 label={label}
-                tasks={columns[value]}
+                tasks={hasFilters ? columns[value].filter(passesFilter) : columns[value]}
                 onCardClick={setSelectedTaskId}
                 onAddClick={() => setQuickAddStatus(value)}
               />
@@ -227,6 +281,7 @@ export default function KanbanPage() {
           projects={projects}
           defaultProjectId={typeof projectId === "number" ? projectId : null}
           defaultStatus={quickAddStatus}
+          workspaceId={currentWorkspaceId}
           onClose={() => setQuickAddStatus(null)}
         />
       )}

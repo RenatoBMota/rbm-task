@@ -19,12 +19,6 @@ def require_workspace_member(db: Session, workspace_id: int, user_id: int) -> No
 
 def require_task_access(db: Session, task_id: int, user_id: int) -> Task:
     task = get_task(db, task_id)
-    if not task:
-        raise HTTPException(status_code=404, detail="Tarefa não encontrada")
-    if task.project_id:
-        project = get_project(db, task.project_id)
-        if not project or not get_member(db, project.workspace_id, user_id):
-            raise HTTPException(status_code=404, detail="Tarefa não encontrada")
-    elif task.assignee_id != user_id:
+    if not task or not get_member(db, task.workspace_id, user_id):
         raise HTTPException(status_code=404, detail="Tarefa não encontrada")
     return task

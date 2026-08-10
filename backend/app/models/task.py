@@ -51,6 +51,7 @@ class Task(Base):
     is_archived: Mapped[bool] = mapped_column(Boolean, default=False)
 
     project_id: Mapped[int | None] = mapped_column(ForeignKey("projects.id"), nullable=True)
+    workspace_id: Mapped[int] = mapped_column(ForeignKey("workspaces.id"), nullable=False)
     assignee_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
     parent_id: Mapped[int | None] = mapped_column(ForeignKey("tasks.id", ondelete="CASCADE"), nullable=True)
 

@@ -30,6 +30,7 @@ def test_list_today_and_overdue(client):
     headers = auth_headers(token)
     project = _create_project(client, headers)
 
+    workspace_id = get_default_workspace_id(client, headers)
     overdue_date = datetime.now(timezone.utc) - timedelta(days=1)
     client.post(
         "/api/v1/tasks",
@@ -37,7 +38,7 @@ def test_list_today_and_overdue(client):
         headers=headers,
     )
 
-    overdue = client.get("/api/v1/tasks/overdue", headers=headers)
+    overdue = client.get("/api/v1/tasks/overdue", params={"workspace_id": workspace_id}, headers=headers)
     assert overdue.status_code == 200
     assert len(overdue.json()) == 1
 
@@ -47,6 +48,7 @@ def test_today_tasks_use_brazil_calendar_day_not_utc(client):
     headers = auth_headers(token)
     project = _create_project(client, headers)
 
+    workspace_id = get_default_workspace_id(client, headers)
     now_brt = datetime.now(BUSINESS_TZ)
     # Due late tonight in Brazil time — this can already be tomorrow in UTC
     # (e.g. 23:30 BRT = 02:30 UTC the next day), which is exactly the case
@@ -58,7 +60,7 @@ def test_today_tasks_use_brazil_calendar_day_not_utc(client):
         headers=headers,
     )
 
-    today = client.get("/api/v1/tasks/today", headers=headers)
+    today = client.get("/api/v1/tasks/today", params={"workspace_id": workspace_id}, headers=headers)
     assert today.status_code == 200
     assert any(t["title"] == "Hoje à noite" for t in today.json())
 
@@ -108,21 +110,40 @@ def test_move_task_updates_status_and_board_order(client):
 def test_board_without_project_returns_standalone_tasks_for_current_user(client):
     token_a = register_and_login(client, email="a@rbm.com")
     headers_a = auth_headers(token_a)
+    workspace_a = get_default_workspace_id(client, headers_a)
     token_b = register_and_login(client, email="b@rbm.com")
     headers_b = auth_headers(token_b)
+    workspace_b = get_default_workspace_id(client, headers_b)
 
-    client.post("/api/v1/tasks", json={"title": "Agenda A"}, headers=headers_a)
-    client.post("/api/v1/tasks", json={"title": "Agenda B"}, headers=headers_b)
+    client.post("/api/v1/tasks", json={"title": "Agenda A", "workspace_id": workspace_a}, headers=headers_a)
+    client.post("/api/v1/tasks", json={"title": "Agenda B", "workspace_id": workspace_b}, headers=headers_b)
 
-    board = client.get("/api/v1/tasks/board", headers=headers_a)
+    board = client.get("/api/v1/tasks/board", params={"workspace_id": workspace_a}, headers=headers_a)
     assert board.status_code == 200
     titles = [t["title"] for t in board.json()]
     assert titles == ["Agenda A"]
 
 
+def test_create_standalone_task_requires_project_or_workspace(client):
+    token = register_and_login(client)
+    headers = auth_headers(token)
+
+    response = client.post("/api/v1/tasks", json={"title": "Sem nada"}, headers=headers)
+    assert response.status_code == 400
+
+
+def test_board_without_project_requires_workspace_id(client):
+    token = register_and_login(client)
+    headers = auth_headers(token)
+
+    response = client.get("/api/v1/tasks/board", headers=headers)
+    assert response.status_code == 400
+
+
 def test_subtasks_listed_under_parent(client):
     token = register_and_login(client)
     headers = auth_headers(token)
+    workspace_id = get_default_workspace_id(client, headers)
     project = _create_project(client, headers)
     parent = client.post(
         "/api/v1/tasks", json={"title": "Pai", "project_id": project["id"]}, headers=headers
@@ -138,7 +159,7 @@ def test_subtasks_listed_under_parent(client):
     assert len(subtasks.json()) == 1
     assert subtasks.json()[0]["title"] == "Filho"
 
-    top_level = client.get("/api/v1/tasks", headers=headers).json()
+    top_level = client.get("/api/v1/tasks", params={"workspace_id": workspace_id}, headers=headers).json()
     assert all(t["id"] != subtasks.json()[0]["id"] for t in top_level)
 
 
@@ -190,7 +211,7 @@ def test_delete_task_with_notification_dependents_and_subtasks(client):
     assert client.get(f"/api/v1/tasks/{subtask['id']}", headers=headers).status_code == 404
 
 
-def test_list_tasks_scoped_to_workspace_includes_personal_tasks(client):
+def test_list_tasks_scoped_to_workspace_excludes_other_workspaces(client):
     token = register_and_login(client)
     headers = auth_headers(token)
     workspace_a = get_default_workspace_id(client, headers)
@@ -203,12 +224,28 @@ def test_list_tasks_scoped_to_workspace_includes_personal_tasks(client):
 
     client.post("/api/v1/tasks", json={"title": "Tarefa A", "project_id": project_a["id"]}, headers=headers)
     client.post("/api/v1/tasks", json={"title": "Tarefa B", "project_id": project_b["id"]}, headers=headers)
-    client.post("/api/v1/tasks", json={"title": "Tarefa pessoal"}, headers=headers)
+    client.post(
+        "/api/v1/tasks", json={"title": "Pessoal A", "workspace_id": workspace_a}, headers=headers
+    )
+    client.post(
+        "/api/v1/tasks", json={"title": "Pessoal B", "workspace_id": workspace_b}, headers=headers
+    )
 
-    response = client.get("/api/v1/tasks", params={"workspace_id": workspace_a}, headers=headers)
-    assert response.status_code == 200
-    titles = {t["title"] for t in response.json()}
-    assert titles == {"Tarefa A", "Tarefa pessoal"}
+    response_a = client.get("/api/v1/tasks", params={"workspace_id": workspace_a}, headers=headers)
+    assert response_a.status_code == 200
+    assert {t["title"] for t in response_a.json()} == {"Tarefa A", "Pessoal A"}
+
+    response_b = client.get("/api/v1/tasks", params={"workspace_id": workspace_b}, headers=headers)
+    assert response_b.status_code == 200
+    assert {t["title"] for t in response_b.json()} == {"Tarefa B", "Pessoal B"}
+
+
+def test_list_tasks_requires_workspace_id_without_project(client):
+    token = register_and_login(client)
+    headers = auth_headers(token)
+
+    response = client.get("/api/v1/tasks", headers=headers)
+    assert response.status_code == 400
 
 
 def test_list_tasks_requires_workspace_membership(client):
@@ -220,3 +257,99 @@ def test_list_tasks_requires_workspace_membership(client):
         "/api/v1/tasks", params={"workspace_id": workspace_a}, headers=auth_headers(token_b)
     )
     assert response.status_code == 404
+
+
+def test_list_tasks_ordered_by_due_date_with_no_date_last(client):
+    token = register_and_login(client)
+    headers = auth_headers(token)
+    workspace_id = get_default_workspace_id(client, headers)
+    project = _create_project(client, headers)
+    base = datetime.now(timezone.utc)
+
+    client.post(
+        "/api/v1/tasks",
+        json={"title": "Sem data", "project_id": project["id"]},
+        headers=headers,
+    )
+    client.post(
+        "/api/v1/tasks",
+        json={"title": "Depois", "project_id": project["id"], "due_date": (base + timedelta(days=5)).isoformat()},
+        headers=headers,
+    )
+    client.post(
+        "/api/v1/tasks",
+        json={"title": "Antes", "project_id": project["id"], "due_date": (base + timedelta(days=1)).isoformat()},
+        headers=headers,
+    )
+
+    response = client.get("/api/v1/tasks", params={"workspace_id": workspace_id}, headers=headers)
+    assert response.status_code == 200
+    assert [t["title"] for t in response.json()] == ["Antes", "Depois", "Sem data"]
+
+
+def test_list_tasks_filters_by_priority_and_due_date_range(client):
+    token = register_and_login(client)
+    headers = auth_headers(token)
+    workspace_id = get_default_workspace_id(client, headers)
+    project = _create_project(client, headers)
+    base = datetime.now(timezone.utc)
+
+    client.post(
+        "/api/v1/tasks",
+        json={
+            "title": "Urgente perto", "project_id": project["id"], "priority": "P1",
+            "due_date": (base + timedelta(days=1)).isoformat(),
+        },
+        headers=headers,
+    )
+    client.post(
+        "/api/v1/tasks",
+        json={
+            "title": "Urgente longe", "project_id": project["id"], "priority": "P1",
+            "due_date": (base + timedelta(days=30)).isoformat(),
+        },
+        headers=headers,
+    )
+    client.post(
+        "/api/v1/tasks",
+        json={
+            "title": "Baixa perto", "project_id": project["id"], "priority": "P4",
+            "due_date": (base + timedelta(days=1)).isoformat(),
+        },
+        headers=headers,
+    )
+
+    response = client.get(
+        "/api/v1/tasks",
+        params={
+            "workspace_id": workspace_id,
+            "priority": "P1",
+            "due_after": base.isoformat(),
+            "due_before": (base + timedelta(days=3)).isoformat(),
+        },
+        headers=headers,
+    )
+    assert response.status_code == 200
+    assert [t["title"] for t in response.json()] == ["Urgente perto"]
+
+
+def test_moving_task_to_another_project_updates_workspace(client):
+    token = register_and_login(client)
+    headers = auth_headers(token)
+    project_a = _create_project(client, headers, name="Projeto A")
+
+    workspace_b = client.post(
+        "/api/v1/workspaces", json={"name": "Segunda área"}, headers=headers
+    ).json()["id"]
+    project_b = create_project(client, headers, workspace_b, name="Projeto B")
+
+    task = client.post(
+        "/api/v1/tasks", json={"title": "Migrante", "project_id": project_a["id"]}, headers=headers
+    ).json()
+    assert task["workspace_id"] != workspace_b
+
+    updated = client.put(
+        f"/api/v1/tasks/{task['id']}", json={"project_id": project_b["id"]}, headers=headers
+    )
+    assert updated.status_code == 200
+    assert updated.json()["workspace_id"] == workspace_b

@@ -99,6 +99,7 @@ def duplicate_project(db: Session, source: Project, new_name: str, owner_id: int
             status=TaskStatus.TODO,
             estimated_minutes=task.estimated_minutes,
             project_id=new_project.id,
+            workspace_id=new_project.workspace_id,
             assignee_id=owner_id,
             position=position,
         ))
